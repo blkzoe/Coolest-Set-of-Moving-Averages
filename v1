@@ -1,0 +1,1762 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © ZoeUdokpan
+
+//
+// DESCRIPTION 
+// Pythagorean Means of Moving Averages with the Fibonacci Numbers Sequence
+//
+// 1. Calculates moving averages having sources high prices, low prices, close prices, open prices, and average prices.
+// For each source multiple moving averages are calculated, each with different period lengths.
+// Period length values follow a selection of number sequences published by the OEIS Foundation.
+// 2. User selects the numbers sequence that defines period length for moving averages.
+// Number sequences include: Fibonacci numbers, Lucas numbers, Narayana numbers, Mersenne exponents, etc.
+// For example, the Fibonacci sequence includes 0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610, 987, 1597, 2584, 4181...
+// Period length values defined by the Fibonacci numbers sequence are applied as follows:
+// The "short" lookback set includes 11 moving average having the following periods: 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377. 
+// The "mid" lookback set includes 14 moving average having the following periods: 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610, 987, 1597.
+// The "long" lookback set includes 16 moving average having the following periods: 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610, 987, 1597, 2584, 4181.
+// 3. User selects the type of moving average: SMA, EMA, DEMA, TEMA, HMA, SMMA/MMA/RMA, WMA, VWMA.
+// 4. Calculates the mean of each set of moving averages.
+// 5. User selects the type of mean to be calculated: 1) arithmetic, 2) geometric, 3) harmonic, 4) quadratic, 5) cubic. 
+// Multiple mean calculations may be displayed simultaneously, allowing for comparison.
+// 6. Plots the mean of moving averages having source high prices, low prices, close prices, open prices, and average prices.
+// 7. User selects which plots to display: 1) high and low prices, 2) close prices, 3) open prices, and/or 4) average prices.
+// 8. Calculates and plots a vertical deviation from an origin mean--the mean from which the deviation is measured.
+// 9. Deviation = origin mean x (a1 x b1^(x1/y1) + a2 x constant^(x2/y2))/c, where constant is a value = mathematical constant selected from a list provided.
+// 10. User selects the deviation origin mean: 1) high and low prices plot, 2) close prices plot, or 3) average prices plot.
+// 11. User selects constatn and defines deviation variables a1, b1, x1, y1, a2, x2, y2, and c.
+// Examples of deviation as a percent of the mean: 
+// a) Euler's number = ∑(1/n!) = 2.718281828
+// b) Pythagoras's constant (default) = 2^(1/2) = 1.414213562
+// 12. Displaces the plots horizontally +/- by a user defined number of periods.
+//
+// PURPOSE
+// 1. Identify price trends and potential levels of support and resistance.
+//
+// CREDITS
+// 1. "Fibonacci Moving Average" by Sofien Kaabar: two plots, each an arithmetic mean of EMAs of 1) high prices and 2) low prices, with periods 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610, 987, 1597, 2584, 4181.
+// 2. "Solarized" color scheme by Ethan Schoonover.
+//
+
+// @version=5
+
+indicator("[COOL MA]",  overlay=true, timeframe="", timeframe_gaps=true)
+
+// VARIABLES
+
+// Tillson's Moving Average
+a = 0.618033989 // Tillson applied a = 0.7, here applying the Golden ratio conjugate = |(1-√5)/2| = 0.618033989
+a1 = -1*math.pow(a, 3)
+a2 = 3*math.pow(a, 2) + 3*math.pow(a, 3)
+a3 = -6*math.pow(a, 2) - 3*a - 3*math.pow(a, 3)
+a4 = 1 + 3*a + math.pow(a, 3) + 3*math.pow(a, 2)
+
+// moving average type selection
+
+ma(source, length, type) =>
+    type == "SMA" ? ta.sma(source, length) :
+     type == "EMA" ? ta.ema(source, length) :
+     type == "DEMA" ? 2 * ta.ema(source, length) - ta.ema(ta.ema(source, length), length) :
+     type == "TEMA" ? 3 * ta.ema(source, length) - 3 * ta.ema(ta.ema(source, length), length) + ta.ema(ta.ema(ta.ema(source, length), length), length) :
+     type == "QEMA" ? 5 * ta.ema(source, length) - 10 * ta.ema(ta.ema(source, length), length) + 10 * ta.ema(ta.ema(ta.ema(source, length), length), length) - 5 * ta.ema(ta.ema(ta.ema(ta.ema(source, length), length), length), length) + ta.ema(ta.ema(ta.ema(ta.ema(ta.ema(source, length), length), length), length), length) :
+     type == "PEMA" ? 8 * ta.ema(source, length) - 28 * ta.ema(ta.ema(source, length), length) + 56 * ta.ema(ta.ema(ta.ema(source, length), length), length) - 70 * ta.ema(ta.ema(ta.ema(ta.ema(source, length), length), length), length) + 56 * ta.ema(ta.ema(ta.ema(ta.ema(ta.ema(source, length), length), length), length), length) - 28 * ta.ema(ta.ema(ta.ema(ta.ema(ta.ema(ta.ema(source, length), length), length), length), length), length) + 8 * ta.ema(ta.ema(ta.ema(ta.ema(ta.ema(ta.ema(ta.ema(source, length), length), length), length), length), length), length) - ta.ema(ta.ema(ta.ema(ta.ema(ta.ema(ta.ema(ta.ema(ta.ema(source, length), length), length), length), length), length), length), length) :
+     type == "ZLEMA" ? ta.ema(source + (source - source[math.round((length - 1) / 2)]), length) :
+     type == "T3" ? a1 * ta.ema(ta.ema(ta.ema(ta.ema(ta.ema(ta.ema(source, length), length), length), length), length), length) + a2 * ta.ema(ta.ema(ta.ema(ta.ema(ta.ema(source, length), length), length), length), length) + a3 * ta.ema(ta.ema(ta.ema(ta.ema(source, length), length), length), length) + a4 * ta.ema(ta.ema(ta.ema(source, length), length), length) :
+     type == "HMA" ? ta.hma(source, length) :
+     type == "SMMA" ? ta.rma(source, length) :
+     type == "WMA" ? ta.wma(source, length) :
+     type == "VWMA" ? ta.vwma(source, length) :
+     na
+
+
+// Exponential Moving Averages:
+//
+// Note: TEMA, QEMA, PEMA, and T3 may not display when used with "long" or "mid" lookback periods with some number sequences. 
+// If TEMA, QEMA, PEMA, or T3 do not display, select a shorter lookback period, e.g., "mid" or "short", or a number sequence having fewer periods included within the selected lookback.
+//
+// ema1 = ema(source, length) = ta.ema(source, length)
+// ema2 = ema(ema1, length) = ta.ema(ta.ema(source, length), length)
+// DEMA = 2 * ema1 - ema2 = 2 * ta.ema(source, length) - ta.ema(ta.ema(source, length), length)
+// ema3 = ema(ema2, length) = ta.ema(ta.ema(ta.ema(source, length), length), length)
+// TEMA by Patrick Mulloy =  3 * (ema1 - ema2) + ema3 = 3 * (ta.ema(source, length) - ta.ema(ta.ema(source, length), length)) + ta.ema(ta.ema(ta.ema(source, length), length), length)
+// ema4 = ema(ema3, length) = ta.ema(ta.ema(ta.ema(ta.ema(source, length), length), length), length)
+// ema5 = ema(ema4, length) = ta.ema(ema(ta.ema(ta.ema(ta.ema(source, length), length), length), length), length)
+// QEMA by Bruno Pio = 5 * ema1 - 10 * ema2 + 10 * ema3 - 5 * ema4 + ema5 = 5 * ta.ema(source, length) - 10 * ta.ema(ta.ema(source, length), length) + 10 * ta.ema(ta.ema(ta.ema(source, length), length), length) - 5 * ta.ema(ta.ema(ta.ema(ta.ema(source, length), length), length), length) + ta.ema(ta.ema(ta.ema(ta.ema(ta.ema(source, length), length), length), length), length)
+// ema6 = ema(ema5, length) = ta.ema(ta.ema(ta.ema(ta.ema(ta.ema(ta.ema(source, length), length), length), length), length), length)
+// ema7 = ema(ema6, length) = ta.ema(ta.ema(ta.ema(ta.ema(ta.ema(ta.ema(ta.ema(source, length), length), length), length), length), length), length)
+// ema8 = ema(ema7, length) = ta.ema(ta.ema(ta.ema(ta.ema(ta.ema(ta.ema(ta.ema(ta.ema(source, length), length), length), length), length), length), length), length)
+// PEMA by Bruno Pio = 8 * ema1 - 28 * ema2 + 56 * ema3 - 70 * ema4 + 56 * ema5 - 28 * ema6 + 8 * ema7 - ema8 = 8 * ta.ema(source, length) - 28 * ta.ema(ta.ema(source, length), length) + 56 * ta.ema(ta.ema(ta.ema(source, length), length), length) - 70 * ta.ema(ta.ema(ta.ema(ta.ema(source, length), length), length), length) + 56 * ta.ema(ta.ema(ta.ema(ta.ema(ta.ema(source, length), length), length), length), length) - 28 * ta.ema(ta.ema(ta.ema(ta.ema(ta.ema(ta.ema(source, length), length), length), length), length), length) + 8 * ta.ema(ta.ema(ta.ema(ta.ema(ta.ema(ta.ema(ta.ema(source, length), length), length), length), length), length), length) - ta.ema(ta.ema(ta.ema(ta.ema(ta.ema(ta.ema(ta.ema(ta.ema(source, length), length), length), length), length), length), length), length)
+// ZLEMA by John Ehlers and Ric Way = ema(source + source[lag], length), where lag = (length - 1) / 2, thus ZLEMA = ema(source + source[(length - 1) / 2], length) = ta.ema(source + (source - source[math.round((length - 1) / 2)]), length)
+// 
+// Tillson's T3 by Tim Tillson
+// Tillson1 = ema(source, length) = ema1
+// Tillson2 = ema(Tillson1, length) = ema2
+// Tillson3 = ema(Tillson2, length) = ema3
+// Tillson4 = ema(Tillson3, length) = ema4
+// Tillson5 = ema(Tillson4, length) = ema5
+// Tillson6 = ema(Tillson5, length) = ema6
+// a = 0.618033989, Tillson applied a = 0.7, here applying the Golden ratio conjugate = |(1-√5)/2| = 0.618033989
+// a1 = -a^3 = -1*math.pow(a, 3)
+// a2 = 3*a^2 + 3*a^3 = 3*math.pow(a, 2) + 3*math.pow(a, 3)
+// a3 = -6*a^2 - 3*a - 3*a^3 = -6*math.pow(a, 2) - 3*a - 3*math.pow(a, 3)
+// a4 = 1 + 3*a + a^3 + 3*a^2 = 1 + 3*a + math.pow(a, 3) + 3*math.pow(a, 2)
+// T3 =  a1 * Tillson6 + a2 * Tillson5 + a3 * Tillson4 + a4 * Tillson3 = a1 * ta.ema(ta.ema(ta.ema(ta.ema(ta.ema(ta.ema(source, length), length), length), length), length), length) + a2 * ta.ema(ema(ta.ema(ta.ema(ta.ema(source, length), length), length), length), length) + a3 * ta.ema(ta.ema(ta.ema(ta.ema(source, length), length), length), length) + a4 * ta.ema(ta.ema(ta.ema(source, length), length), length)
+
+
+fib_ma_type = input.string("EMA", "Moving averages", inline = "MA", options = ["SMA", "EMA", "DEMA", "TEMA", "QEMA", "PEMA", "ZLEMA", "T3", "HMA", "SMMA", "WMA", "VWMA"], group = "Moving Average Type Applied to all Prices: Simple, Exponential, Double Exp, Triple Exp, Quandruple Exp, Pentuple Exp, Zero Lag Exp, Tillson's T3, Hull, Smoothed, Weighted, or Volume-Weighted.")
+
+
+// select lookback: short, mid, or long
+// note: there are 390 minutes (78 5-minute periods, 26 15-minute periods) in a Typical trading day, and approximately 250 trading days in a year.
+
+fib_lookback = input.string("Mid", "Lookback", inline = "Lookback", options = ["Short", "Mid", "Long"], group = "Moving Averages' Lookback is Measured in Periods. For example, Fibonacci Numbers' Lookbacks are as follows: Short (377 periods), Mid (1597 periods), Long (4181 periods).")
+
+// Select the number sequence that defines period lengths for moving averages ("short" 11 periods 0-10, "mid" 14 periods 0-13, and "long" 16 periods 0-15 sets). 
+//
+// position:        000,    00, 0,  1,  2,  3,      4,      5,      6,      7,      8,      9,      10,     11,     12,     13,     14,     15,     16,     17,     18,     19. 
+//
+// Fibonacci:       1,      2,  3,  5,  8,  13,     21,     34,     55,     89,     144,    233,    377,    610,    987,    1597,   2584,   4181,   -,      -,      -,      -.
+// Leonardo:        -,      1,  3,  5,  9,  15,     25,     41,     67,     109,    177,    287,    465,    -,      753,    1219,   1973,   3193,   -,      -,      -,      -.
+// Lucas:           -,      1,  3,  4,  7,  11,     18,     29,     47,     76,     123,    199,    322,    521,    843,    1364,   2207,   3571,   -,      -,      -,      -.
+// Pell:            1,      2,  5,  -,  -,  12,     -,      29,     -,      70,     -,      169,    408,    -,      985,    -,      -,      2378,   -,      -,      -,      -.
+// Padovan:         1,      2,  3,  4,  5,  7,      9,      12,     16,     21,     28,     37,     49,     65,     86,     114,    151,    200,    265,    351,    465,    616.
+// Perrin:          -,      2,  3,  5,  7,  10,     12,     17,     22,     29,     39,     51,     68,     90,     119,    158,    209,    277,    367,    486,    644,    853.
+// Jacobsthal:      -,      1,  3,  5,  -,  11,     21,     -,      43,     85,     -,      171,    341,    683,    -,      1365,   -,      2731,   -,      -,      -,      -.
+// Catalan:         1,      2,  5,  -,  -,  14,     -,      -,      42,     -,      132,    -,      429,    -,      -,      1430,      -,   4862,   -,      -,      -,      -.
+// Narayana:        1,      2,  3,  4,  6,  9,      13,     19,     28,     41,     60,     88,     129,    189,    277,    406,    595,    872,    1278,   1873,   2745,   4023.
+// Magic:           -,      1,  5,  15, 34, 65,     111,    175,    260,    369,    505,    671,    870,    1105,   1379,   1695,   2056,   2465,   2925,   3439,   4010,   -.
+// Tetrahedral:     -,      1,  4,  10, 20, 35,     56,     84,     120,    165,    220,    286,    364,    455,    560,    680,    816,    969,    1140,   1330,   1540,   -.
+// Mersenne:        -,      2,  3,  5,  7,  13,     17,     19,     31,     61,     89,     107,    127,    521,    607,    1279,   2203,   2281,   3217,   4253,   -,      -.
+// 
+// Considerations for moving averages' period length: 
+// sma formula requires length = 1 or more
+// ema/dema/tema/qema/pema formulas requires length = 1 or more
+// hma formula requires length = 2 or more 
+// smma formula requires length = 1 or more
+// vwma formula requires length = 1 or more
+// wma formula requires length = 1 or more
+
+ma_sequence = input.string("Lucas Numbers 3-322/1364/3571", "Period lengths", inline = "Period Lengths", options = ["Fibonacci Numbers 3-377/1597/4181", "Leonardo Numbers 3-287/1219/3193", "Lucas Numbers 3-322/1364/3571", "Pell Numbers 5-408/985/2378", "Padovan Numbers 3-49/114/200", "Perrin Numbers 3-68/158/277", "Jacobsthal 3-341/1365/2731", "Catalan Numbers 5-429/1430/4862", "Narayana Numbers 3-129/406/872", "Magic Constants 5-870/1695/2465", "Tetrahedral Numbers 4-364/680/969", "Mersenne Exponents 3-127/1279/2281"], group = "Select the Number Sequence from which Moving Averages' Period Lengths are Defined. Short, Mid, and Long Lookback Lengths are Noted.")
+
+// define length
+
+ma_0_length = 1
+ma_1_length = 1
+ma_2_length = 1
+ma_3_length = 1
+ma_4_length = 1
+ma_5_length = 1
+ma_6_length = 1
+ma_7_length = 1
+ma_8_length = 1
+ma_9_length = 1
+ma_10_length = 1
+ma_11_length = 1
+ma_12_length = 1
+ma_13_length = 1
+ma_14_length = 1
+ma_15_length = 1
+
+// length values
+// exclude sequence values < 3 to avoid calculation errors.
+
+if (ma_sequence == "Fibonacci Numbers 3-377/1597/4181") 
+    ma_0_length := 3
+    ma_1_length := 5
+    ma_2_length := 8
+    ma_3_length := 13
+    ma_4_length := 21
+    ma_5_length := 34
+    ma_6_length := 55
+    ma_7_length := 89
+    ma_8_length := 144
+    ma_9_length := 233
+    ma_10_length := 377
+    ma_11_length := 610
+    ma_12_length := 987
+    ma_13_length := 1597
+    ma_14_length := 2584
+    ma_15_length := 4181
+else
+    if (ma_sequence == "Leonardo Numbers 3-287/1219/3193")
+        ma_0_length := 3
+        ma_1_length := 5
+        ma_2_length := 9
+        ma_3_length := 15
+        ma_4_length := 25
+        ma_5_length := 41
+        ma_6_length := 67
+        ma_7_length := 109
+        ma_8_length := 177
+        ma_9_length := 287
+        ma_10_length := 465
+        ma_11_length := 5 // temporary set to 5, later excluded
+        ma_12_length := 753
+        ma_13_length := 1219
+        ma_14_length := 1973
+        ma_15_length := 3193
+    else
+        if (ma_sequence == "Lucas Numbers 3-322/1364/3571")
+            ma_0_length := 3
+            ma_1_length := 4
+            ma_2_length := 7
+            ma_3_length := 11
+            ma_4_length := 18
+            ma_5_length := 29
+            ma_6_length := 47
+            ma_7_length := 76
+            ma_8_length := 123
+            ma_9_length := 199
+            ma_10_length := 322
+            ma_11_length := 512
+            ma_12_length := 843
+            ma_13_length := 1364
+            ma_14_length := 2207
+            ma_15_length := 3571
+        else
+            if (ma_sequence == "Pell Numbers 5-408/985/2378")
+                ma_0_length := 5
+                ma_1_length := 5 // temporary set to 5, later excluded
+                ma_2_length := 5 // temporary set to 5, later excluded 
+                ma_3_length := 12
+                ma_4_length := 5 // temporary set to 5, later excluded
+                ma_5_length := 29
+                ma_6_length := 5 // temporary set to 5, later excluded 
+                ma_7_length := 70
+                ma_8_length := 5 // temporary set to 5, later excluded 
+                ma_9_length := 169
+                ma_10_length := 408
+                ma_11_length := 5 // temporary set to 5, later excluded 
+                ma_12_length := 985
+                ma_13_length := 5 // temporary set to 5, later excluded 
+                ma_14_length := 5 // temporary set to 5, later excluded 
+                ma_15_length := 2378
+            else
+                if (ma_sequence == "Padovan Numbers 3-49/114/200")
+                    ma_0_length := 3
+                    ma_1_length := 4
+                    ma_2_length := 5
+                    ma_3_length := 7
+                    ma_4_length := 9
+                    ma_5_length := 12
+                    ma_6_length := 16
+                    ma_7_length := 21
+                    ma_8_length := 28
+                    ma_9_length := 37
+                    ma_10_length := 49
+                    ma_11_length := 65
+                    ma_12_length := 86
+                    ma_13_length := 114
+                    ma_14_length := 151
+                    ma_15_length := 200
+                else
+                    if (ma_sequence == "Perrin Numbers 3-68/158/277")
+                        ma_0_length := 3
+                        ma_1_length := 5
+                        ma_2_length := 7
+                        ma_3_length := 10
+                        ma_4_length := 12
+                        ma_5_length := 17
+                        ma_6_length := 22
+                        ma_7_length := 29
+                        ma_8_length := 39
+                        ma_9_length := 51
+                        ma_10_length := 68
+                        ma_11_length := 90
+                        ma_12_length := 119
+                        ma_13_length := 158
+                        ma_14_length := 209
+                        ma_15_length := 277
+                    else
+                        if (ma_sequence == "Jacobsthal 3-341/1365/2731")
+                            ma_0_length := 3
+                            ma_1_length := 5
+                            ma_2_length := 5 // temporary set to 5, later excluded
+                            ma_3_length := 11
+                            ma_4_length := 21
+                            ma_5_length := 5 // temporary set to 5, later excluded
+                            ma_6_length := 43
+                            ma_7_length := 85
+                            ma_8_length := 5 // temporary set to 5, later excluded
+                            ma_9_length := 171
+                            ma_10_length := 341
+                            ma_11_length := 683
+                            ma_12_length := 5 // temporary set to 5, later excluded
+                            ma_13_length := 1365
+                            ma_14_length := 5 // temporary set to 5, later excluded
+                            ma_15_length := 2731
+                        else
+                            if(ma_sequence == "Catalan Numbers 5-429/1430/4862")
+                                ma_0_length := 5
+                                ma_1_length := 5 // temporary set to 5, later excluded
+                                ma_2_length := 5 // temporary set to 5, later excluded
+                                ma_3_length := 14
+                                ma_4_length := 5 // temporary set to 5, later excluded
+                                ma_5_length := 5 // temporary set to 5, later excluded
+                                ma_6_length := 42
+                                ma_7_length := 5 // temporary set to 5, later excluded
+                                ma_8_length := 132
+                                ma_9_length := 5 // temporary set to 5, later excluded
+                                ma_10_length := 429
+                                ma_11_length := 5 // temporary set to 5, later excluded
+                                ma_12_length := 5 // temporary set to 5, later excluded
+                                ma_13_length := 1430
+                                ma_14_length := 5 // temporary set to 5, later excluded
+                                ma_15_length := 4862
+                            else
+                                if (ma_sequence == "Narayana Numbers 3-129/406/872")
+                                    ma_0_length := 3
+                                    ma_1_length := 4
+                                    ma_2_length := 6
+                                    ma_3_length := 9
+                                    ma_4_length := 13
+                                    ma_5_length := 19
+                                    ma_6_length := 28
+                                    ma_7_length := 41
+                                    ma_8_length := 60
+                                    ma_9_length := 88
+                                    ma_10_length := 129
+                                    ma_11_length := 189
+                                    ma_12_length := 277
+                                    ma_13_length := 406
+                                    ma_14_length := 595
+                                    ma_15_length := 872
+                                else
+                                    if (ma_sequence == "Magic Constants 5-870/1695/2465")
+                                        ma_0_length := 5
+                                        ma_1_length := 15
+                                        ma_2_length := 34
+                                        ma_3_length := 65
+                                        ma_4_length := 111
+                                        ma_5_length := 175
+                                        ma_6_length := 260
+                                        ma_7_length := 369
+                                        ma_8_length := 505
+                                        ma_9_length := 671
+                                        ma_10_length := 870
+                                        ma_11_length := 1105
+                                        ma_12_length := 1379
+                                        ma_13_length := 1695
+                                        ma_14_length := 2056
+                                        ma_15_length := 2465
+                                    else
+                                        if (ma_sequence == "Tetrahedral Numbers 4-364/680/969")
+                                            ma_0_length := 4
+                                            ma_1_length := 10
+                                            ma_2_length := 20
+                                            ma_3_length := 35
+                                            ma_4_length := 56
+                                            ma_5_length := 84
+                                            ma_6_length := 120
+                                            ma_7_length := 165
+                                            ma_8_length := 220
+                                            ma_9_length := 286
+                                            ma_10_length := 364
+                                            ma_11_length := 455
+                                            ma_12_length := 560
+                                            ma_13_length := 680
+                                            ma_14_length := 816
+                                            ma_15_length := 969
+                                        else
+                                            if (ma_sequence == "Mersenne Exponents 3-127/1279/2281")
+                                                ma_0_length := 3
+                                                ma_1_length := 5
+                                                ma_2_length := 7
+                                                ma_3_length := 13
+                                                ma_4_length := 17
+                                                ma_5_length := 19
+                                                ma_6_length := 31
+                                                ma_7_length := 61
+                                                ma_8_length := 89
+                                                ma_9_length := 107
+                                                ma_10_length := 127
+                                                ma_11_length := 512
+                                                ma_12_length := 607
+                                                ma_13_length := 1279
+                                                ma_14_length := 2203
+                                                ma_15_length := 2281
+
+
+// increase the entire set of price moving averages period lengths by a specified number of periods.
+// for example: periods 3,  5,  8... increased by 2 periods becomes 5,  7,  10...
+
+shift_prices = input(0, title = "OHLC price period increase", group = "Increase by a Specified Number of Periods all Period Lengths applied in the Calculations producing the Mean of Prices' Moving Averages.")
+
+//shift_lowprices = input(0, title = "Low", group = "Increase by a Specified Number of Periods all Period Lengths applied in the Calculations producing the Mean of Prices' Moving Averages.")
+
+//shift_openprices = input(0, title = "Open", group = "Increase by a Specified Number of Periods all Period Lengths applied in the Calculations producing the Mean of Prices' Moving Averages.")
+
+//shift_closeprices = input(0, title = "Close", group = "Increase by a Specified Number of Periods all Period Lengths applied in the Calculations producing the Mean of Prices' Moving Averages.")
+
+shift_aveprices = input(0, title = "Average price period increase", group = "Increase by a Specified Number of Periods all Period Lengths applied in the Calculations producing the Mean of Prices' Moving Averages.")
+
+
+
+
+
+// display high and low prices moving averages
+
+highprice = input(true, "High", group = "Select the Mean of Prices' Moving Averages to Plot by Selecting the Source Price applied in the Calculations producing the Mean of Prices' Moving Averages.")
+
+lowprice = input(true, "Low", group = "Select the Mean of Prices' Moving Averages to Plot by Selecting the Source Price applied in the Calculations producing the Mean of Prices' Moving Averages.")
+
+// display close price moving averages
+
+closeprice = input(true, "Close", group = "Select the Mean of Prices' Moving Averages to Plot by Selecting the Source Price applied in the Calculations producing the Mean of Prices' Moving Averages.")
+
+// display open price moving averages
+
+openprice = input(true, "Open", group = "Select the Mean of Prices' Moving Averages to Plot by Selecting the Source Price applied in the Calculations producing the Mean of Prices' Moving Averages.")
+
+// display average price moving averages
+
+averageprice = input(true, "Average", group = "Select the Mean of Prices' Moving Averages to Plot by Selecting the Source Price applied in the Calculations producing the Mean of Prices' Moving Averages.")
+
+
+// moving averages of high prices
+
+hfib_ma_0 = ma(high, ma_0_length + shift_prices, fib_ma_type)
+hfib_ma_1 = ma(high, ma_1_length + shift_prices, fib_ma_type)
+hfib_ma_2 = ma(high, ma_2_length + shift_prices, fib_ma_type)
+hfib_ma_3 = ma(high, ma_3_length + shift_prices, fib_ma_type)
+hfib_ma_4 = ma(high, ma_4_length + shift_prices, fib_ma_type)
+hfib_ma_5 = ma(high, ma_5_length + shift_prices, fib_ma_type)
+hfib_ma_6 = ma(high, ma_6_length + shift_prices, fib_ma_type)
+hfib_ma_7 = ma(high, ma_7_length + shift_prices, fib_ma_type)
+hfib_ma_8 = ma(high, ma_8_length + shift_prices, fib_ma_type)
+hfib_ma_9 = ma(high, ma_9_length + shift_prices, fib_ma_type)
+hfib_ma_10 = ma(high, ma_10_length + shift_prices, fib_ma_type)
+hfib_ma_11 = ma(high, ma_11_length + shift_prices, fib_ma_type)
+hfib_ma_12 = ma(high, ma_12_length + shift_prices, fib_ma_type)
+hfib_ma_13 = ma(high, ma_13_length + shift_prices, fib_ma_type)
+hfib_ma_14 = ma(high, ma_14_length + shift_prices, fib_ma_type)
+hfib_ma_15 = ma(high, ma_15_length + shift_prices, fib_ma_type)
+
+// moving averages of low prices
+
+lfib_ma_0 = ma(low, ma_0_length + shift_prices, fib_ma_type)
+lfib_ma_1 = ma(low, ma_1_length + shift_prices, fib_ma_type)
+lfib_ma_2 = ma(low, ma_2_length + shift_prices, fib_ma_type)
+lfib_ma_3 = ma(low, ma_3_length + shift_prices, fib_ma_type)
+lfib_ma_4 = ma(low, ma_4_length + shift_prices, fib_ma_type)
+lfib_ma_5 = ma(low, ma_5_length + shift_prices, fib_ma_type)
+lfib_ma_6 = ma(low, ma_6_length + shift_prices, fib_ma_type)
+lfib_ma_7 = ma(low, ma_7_length + shift_prices, fib_ma_type)
+lfib_ma_8 = ma(low, ma_8_length + shift_prices, fib_ma_type)
+lfib_ma_9 = ma(low, ma_9_length + shift_prices, fib_ma_type)
+lfib_ma_10 = ma(low, ma_10_length + shift_prices, fib_ma_type)
+lfib_ma_11 = ma(low, ma_11_length + shift_prices, fib_ma_type)
+lfib_ma_12 = ma(low, ma_12_length + shift_prices, fib_ma_type)
+lfib_ma_13 = ma(low, ma_13_length + shift_prices, fib_ma_type)
+lfib_ma_14 = ma(low, ma_14_length + shift_prices, fib_ma_type)
+lfib_ma_15 = ma(low, ma_15_length + shift_prices, fib_ma_type)
+
+// moving averages of close prices
+
+cfib_ma_0 = ma(close, ma_0_length + shift_prices, fib_ma_type)
+cfib_ma_1 = ma(close, ma_1_length + shift_prices, fib_ma_type)
+cfib_ma_2 = ma(close, ma_2_length + shift_prices, fib_ma_type)
+cfib_ma_3 = ma(close, ma_3_length + shift_prices, fib_ma_type)
+cfib_ma_4 = ma(close, ma_4_length + shift_prices, fib_ma_type)
+cfib_ma_5 = ma(close, ma_5_length + shift_prices, fib_ma_type)
+cfib_ma_6 = ma(close, ma_6_length + shift_prices, fib_ma_type)
+cfib_ma_7 = ma(close, ma_7_length + shift_prices, fib_ma_type)
+cfib_ma_8 = ma(close, ma_8_length + shift_prices, fib_ma_type)
+cfib_ma_9 = ma(close, ma_9_length + shift_prices, fib_ma_type)
+cfib_ma_10 = ma(close, ma_10_length + shift_prices, fib_ma_type)
+cfib_ma_11 = ma(close, ma_11_length + shift_prices, fib_ma_type)
+cfib_ma_12 = ma(close, ma_12_length + shift_prices, fib_ma_type)
+cfib_ma_13 = ma(close, ma_13_length + shift_prices, fib_ma_type)
+cfib_ma_14 = ma(close, ma_14_length + shift_prices, fib_ma_type)
+cfib_ma_15 = ma(close, ma_15_length + shift_prices, fib_ma_type)
+
+// moving averages of open prices
+
+ofib_ma_0 = ma(open, ma_0_length + shift_prices, fib_ma_type)
+ofib_ma_1 = ma(open, ma_1_length + shift_prices, fib_ma_type)
+ofib_ma_2 = ma(open, ma_2_length + shift_prices, fib_ma_type)
+ofib_ma_3 = ma(open, ma_3_length + shift_prices, fib_ma_type)
+ofib_ma_4 = ma(open, ma_4_length + shift_prices, fib_ma_type)
+ofib_ma_5 = ma(open, ma_5_length + shift_prices, fib_ma_type)
+ofib_ma_6 = ma(open, ma_6_length + shift_prices, fib_ma_type)
+ofib_ma_7 = ma(open, ma_7_length + shift_prices, fib_ma_type)
+ofib_ma_8 = ma(open, ma_8_length + shift_prices, fib_ma_type)
+ofib_ma_9 = ma(open, ma_9_length + shift_prices, fib_ma_type)
+ofib_ma_10 = ma(open, ma_10_length + shift_prices, fib_ma_type)
+ofib_ma_11 = ma(open, ma_11_length + shift_prices, fib_ma_type)
+ofib_ma_12 = ma(open, ma_12_length + shift_prices, fib_ma_type)
+ofib_ma_13 = ma(open, ma_13_length + shift_prices, fib_ma_type)
+ofib_ma_14 = ma(open, ma_14_length + shift_prices, fib_ma_type)
+ofib_ma_15 = ma(open, ma_15_length + shift_prices, fib_ma_type)
+
+// moving averages of average prices
+
+aveprice_source = input.string("Typical HLC/3", title = "Average price calculation", options = ["Open", "High", "Low", "Close", "Median HL/2", "Typical HLC/3", "OHLC/4", "Body Median OC/2", "Weighted Close HL2C/4", "Biased HC/2 if Close > Open, else LC/2", "Biased High if Close > HL/2, else Low", "Biased High if Close > Open, else Low"], group = "Select the Mean of Prices' Moving Averages to Plot by Selecting the Source Price applied in the Calculations producing the Mean of Prices' Moving Averages.")
+
+aveprice = 1.0
+
+if (aveprice_source == "Open")
+    aveprice := open
+else
+    if (aveprice_source == "High")
+        aveprice := high
+    else
+        if (aveprice_source == "Low")
+            aveprice := low
+        else
+            if (aveprice_source == "Close")
+                aveprice := close
+            else
+                if (aveprice_source == "Median HL/2")
+                    aveprice := hl2
+                else
+                    if (aveprice_source == "Typical HLC/3")
+                        aveprice := hlc3
+                    else
+                        if (aveprice_source == "OHLC/4")
+                            aveprice := ohlc4
+                        else
+                            if (aveprice_source == "Body Median OC/2")
+                                aveprice := (open + close)/2
+                            else
+                                if (aveprice_source == "Weighted Close HL2C/4")
+                                    aveprice := (high + low + 2 * close) / 4
+                                else
+                                    if (aveprice_source == "Biased HC/2 if Close > Open, else LC/2")
+                                        aveprice := close > open ? (high + close) / 2 : (low + close) / 2
+                                    else
+                                        if (aveprice_source == "Biased High if Close > HL/2, else Low")
+                                            aveprice := close > hl2 ? high : low
+                                        else
+                                            if (aveprice_source == "Biased High if Close > Open, else Low")
+                                                aveprice := close > open ? high : low
+
+tfib_ma_0 = ma(aveprice, ma_0_length + shift_aveprices, fib_ma_type)
+tfib_ma_1 = ma(aveprice, ma_1_length + shift_aveprices, fib_ma_type)
+tfib_ma_2 = ma(aveprice, ma_2_length + shift_aveprices, fib_ma_type)
+tfib_ma_3 = ma(aveprice, ma_3_length + shift_aveprices, fib_ma_type)
+tfib_ma_4 = ma(aveprice, ma_4_length + shift_aveprices, fib_ma_type)
+tfib_ma_5 = ma(aveprice, ma_5_length + shift_aveprices, fib_ma_type)
+tfib_ma_6 = ma(aveprice, ma_6_length + shift_aveprices, fib_ma_type)
+tfib_ma_7 = ma(aveprice, ma_7_length + shift_aveprices, fib_ma_type)
+tfib_ma_8 = ma(aveprice, ma_8_length + shift_aveprices, fib_ma_type)
+tfib_ma_9 = ma(aveprice, ma_9_length + shift_aveprices, fib_ma_type)
+tfib_ma_10 = ma(aveprice, ma_10_length + shift_aveprices, fib_ma_type)
+tfib_ma_11 = ma(aveprice, ma_11_length + shift_aveprices, fib_ma_type)
+tfib_ma_12 = ma(aveprice, ma_12_length + shift_aveprices, fib_ma_type)
+tfib_ma_13 = ma(aveprice, ma_13_length + shift_aveprices, fib_ma_type)
+tfib_ma_14 = ma(aveprice, ma_14_length + shift_aveprices, fib_ma_type)
+tfib_ma_15 = ma(aveprice, ma_15_length + shift_aveprices, fib_ma_type)
+
+// mean of all prices' moving averages
+// pythagorean means selection
+
+am_calc = input(false, "Arithmetic", group = "Select one or more Mean to Plot.")
+gm_calc = input(false, "Geometric", group = "Select one or more Mean to Plot.")
+hm_calc = input(false, "Harmonic", group = "Select one or more Mean to Plot.")
+qm_calc = input(false, "Quadratic", group = "Select one or more Mean to Plot.")
+cm_calc = input(true, "Cubic", group = "Select one or more Mean to Plot.")
+
+//define n number of moving averages per set. n will be used in means calcualtions.
+
+n_short = 0.0
+n_mid = 0.0
+n_long = 0.0
+
+// exclude moving averages having period length < 3
+
+if (ma_sequence == "Fibonacci Numbers 3-377/1597/4181") // exclude moving averages having period length < 3
+    n_short := 11.0
+    n_mid := 14.0
+    n_long := 16.0
+else
+    if (ma_sequence == "Leonardo Numbers 3-287/1219/3193") // exclude moving averages having period length < 3
+        n_short := 10.0
+        n_mid := 13.0
+        n_long := 15.0
+        hfib_ma_11 := 0.0
+        lfib_ma_11 := 0.0
+        cfib_ma_11 := 0.0
+        ofib_ma_11 := 0.0
+        tfib_ma_11 := 0.0
+    else
+        if (ma_sequence == "Lucas Numbers 3-322/1364/3571") // exclude moving averages having period length < 3
+            n_short := 11.0
+            n_mid := 14.0
+            n_long := 16.0
+        else
+            if (ma_sequence == "Pell Numbers 5-408/985/2378") // exclude moving averages having period length < 3
+                n_short := 6.0
+                n_mid := 7.0
+                n_long := 8.0
+                hfib_ma_1 := 0.0
+                lfib_ma_1 := 0.0
+                cfib_ma_1 := 0.0
+                ofib_ma_1 := 0.0
+                tfib_ma_1 := 0.0
+                hfib_ma_2 := 0.0
+                lfib_ma_2 := 0.0
+                cfib_ma_2 := 0.0
+                ofib_ma_2 := 0.0
+                tfib_ma_2 := 0.0
+                hfib_ma_4 := 0.0
+                lfib_ma_4 := 0.0
+                cfib_ma_4 := 0.0
+                ofib_ma_4 := 0.0
+                tfib_ma_4 := 0.0
+                hfib_ma_6 := 0.0
+                lfib_ma_6 := 0.0
+                cfib_ma_6 := 0.0
+                ofib_ma_6 := 0.0
+                tfib_ma_6 := 0.0
+                hfib_ma_8 := 0.0
+                lfib_ma_8 := 0.0
+                cfib_ma_8 := 0.0
+                ofib_ma_8 := 0.0
+                tfib_ma_8 := 0.0
+                hfib_ma_11 := 0.0
+                lfib_ma_11 := 0.0
+                cfib_ma_11 := 0.0
+                ofib_ma_11 := 0.0
+                tfib_ma_11 := 0.0
+                hfib_ma_13 := 0.0
+                lfib_ma_13 := 0.0
+                cfib_ma_13 := 0.0
+                ofib_ma_13 := 0.0
+                tfib_ma_13 := 0.0
+                hfib_ma_14 := 0.0
+                lfib_ma_14 := 0.0
+                cfib_ma_14 := 0.0
+                ofib_ma_14 := 0.0
+                tfib_ma_14 := 0.0
+            else
+                if (ma_sequence == "Padovan Numbers 3-49/114/200") // exclude moving averages having period length < 3
+                    n_short := 11.0
+                    n_mid := 14.0
+                    n_long := 16.0
+                else
+                    if (ma_sequence == "Perrin Numbers 3-68/158/277") // exclude moving averages having period length < 3
+                        n_short := 11.0
+                        n_mid := 14.0
+                        n_long := 16.0
+                    else
+                        if (ma_sequence == "Jacobsthal 3-341/1365/2731") // exclude moving averages having period length < 3
+                            n_short := 8.0
+                            n_mid := 10.0
+                            n_long := 11.0
+                            hfib_ma_2 := 0.0 
+                            lfib_ma_2 := 0.0
+                            cfib_ma_2 := 0.0
+                            ofib_ma_2 := 0.0
+                            tfib_ma_2 := 0.0
+                            hfib_ma_5 := 0.0 
+                            lfib_ma_5 := 0.0
+                            cfib_ma_5 := 0.0
+                            ofib_ma_5 := 0.0
+                            tfib_ma_5 := 0.0
+                            hfib_ma_8 := 0.0 
+                            lfib_ma_8 := 0.0
+                            cfib_ma_8 := 0.0
+                            ofib_ma_8 := 0.0
+                            tfib_ma_8 := 0.0
+                            hfib_ma_12 := 0.0 
+                            lfib_ma_12 := 0.0
+                            cfib_ma_12 := 0.0
+                            ofib_ma_12 := 0.0
+                            tfib_ma_12 := 0.0
+                            hfib_ma_14 := 0.0 
+                            lfib_ma_14 := 0.0
+                            cfib_ma_14 := 0.0
+                            ofib_ma_14 := 0.0
+                            tfib_ma_14 := 0.0
+                        else
+                            if (ma_sequence == "Catalan Numbers 5-429/1430/4862") // exclude moving averages having period length < 3 or > 5000
+                                n_short := 5.0
+                                n_mid := 6.0
+                                n_long := 7.0
+                                hfib_ma_1 := 0.0
+                                lfib_ma_1 := 0.0
+                                cfib_ma_1 := 0.0
+                                ofib_ma_1 := 0.0
+                                tfib_ma_1 := 0.0
+                                hfib_ma_2 := 0.0
+                                lfib_ma_2 := 0.0
+                                cfib_ma_2 := 0.0
+                                ofib_ma_2 := 0.0
+                                tfib_ma_2 := 0.0
+                                hfib_ma_4 := 0.0
+                                lfib_ma_4 := 0.0
+                                cfib_ma_4 := 0.0
+                                ofib_ma_4 := 0.0
+                                tfib_ma_4 := 0.0
+                                hfib_ma_5 := 0.0
+                                lfib_ma_5 := 0.0
+                                cfib_ma_5 := 0.0
+                                ofib_ma_5 := 0.0
+                                tfib_ma_5 := 0.0
+                                hfib_ma_7 := 0.0
+                                lfib_ma_7 := 0.0
+                                cfib_ma_7 := 0.0
+                                ofib_ma_7 := 0.0
+                                tfib_ma_7 := 0.0
+                                hfib_ma_9 := 0.0
+                                lfib_ma_9 := 0.0
+                                cfib_ma_9 := 0.0
+                                ofib_ma_9 := 0.0
+                                tfib_ma_9 := 0.0
+                                hfib_ma_11 := 0.0
+                                lfib_ma_11 := 0.0
+                                cfib_ma_11 := 0.0
+                                ofib_ma_11 := 0.0
+                                tfib_ma_11 := 0.0
+                                hfib_ma_12 := 0.0
+                                lfib_ma_12 := 0.0
+                                cfib_ma_12 := 0.0
+                                ofib_ma_12 := 0.0
+                                tfib_ma_12 := 0.0
+                                hfib_ma_14 := 0.0
+                                lfib_ma_14 := 0.0
+                                cfib_ma_14 := 0.0
+                                ofib_ma_14 := 0.0
+                                tfib_ma_14 := 0.0
+                            else
+                                if (ma_sequence == "Narayana Numbers 3-129/406/872") // exclude moving averages having period length < 3
+                                    n_short := 11.0
+                                    n_mid := 14.0
+                                    n_long := 16.0
+                                else
+                                    if (ma_sequence == "Magic Constants 5-870/1695/2465") // exclude moving averages having period length < 3
+                                        n_short := 11.0
+                                        n_mid := 14.0
+                                        n_long := 16.0
+                                    else
+                                        if (ma_sequence == "Tetrahedral Numbers 4-364/680/969") // exclude moving averages having period length < 3
+                                            n_short := 11.0
+                                            n_mid := 14.0
+                                            n_long := 16.0
+                                        else
+                                            if (ma_sequence == "Mersenne Exponents 3-127/1279/2281") // exclude moving averages having period length < 3
+                                                n_short := 11.0
+                                                n_mid := 14.0
+                                                n_long := 16.0
+
+// arithmetic mean = (∑ xn) / n
+
+hfib_ma_am_short = hfib_ma_10 + hfib_ma_9 + hfib_ma_8 + hfib_ma_7 + hfib_ma_6 + hfib_ma_5 + hfib_ma_4 + hfib_ma_3 + hfib_ma_2 + hfib_ma_1 + hfib_ma_0
+hfib_ma_am_mid = hfib_ma_13 + hfib_ma_12 + hfib_ma_11 + hfib_ma_am_short
+hfib_ma_am_long = hfib_ma_15 + hfib_ma_14 + hfib_ma_am_mid
+
+lfib_ma_am_short = lfib_ma_10 + lfib_ma_9 + lfib_ma_8 + lfib_ma_7 + lfib_ma_6 + lfib_ma_5 + lfib_ma_4 + lfib_ma_3 + lfib_ma_2 + lfib_ma_1 + lfib_ma_0
+lfib_ma_am_mid = lfib_ma_13 + lfib_ma_12 + lfib_ma_11 + lfib_ma_am_short
+lfib_ma_am_long = lfib_ma_15 + lfib_ma_14 + lfib_ma_am_mid
+
+cfib_ma_am_short = cfib_ma_10 + cfib_ma_9 + cfib_ma_8 + cfib_ma_7 + cfib_ma_6 + cfib_ma_5 + cfib_ma_4 + cfib_ma_3 + cfib_ma_2 + cfib_ma_1 + cfib_ma_0
+cfib_ma_am_mid = cfib_ma_13 + cfib_ma_12 + cfib_ma_11 + cfib_ma_am_short
+cfib_ma_am_long = cfib_ma_15 + cfib_ma_14 + cfib_ma_am_mid
+
+ofib_ma_am_short = ofib_ma_10 + ofib_ma_9 + ofib_ma_8 + ofib_ma_7 + ofib_ma_6 + ofib_ma_5 + ofib_ma_4 + ofib_ma_3 + ofib_ma_2 + ofib_ma_1 + ofib_ma_0
+ofib_ma_am_mid = ofib_ma_13 + ofib_ma_12 + ofib_ma_11 + ofib_ma_am_short
+ofib_ma_am_long = ofib_ma_15 + ofib_ma_14 + ofib_ma_am_mid
+
+tfib_ma_am_short = tfib_ma_10 + tfib_ma_9 + tfib_ma_8 + tfib_ma_7 + tfib_ma_6 + tfib_ma_5 + tfib_ma_4 + tfib_ma_3 + tfib_ma_2 + tfib_ma_1 + tfib_ma_0
+tfib_ma_am_mid = tfib_ma_13 + tfib_ma_12 + tfib_ma_11 + tfib_ma_am_short
+tfib_ma_am_long = tfib_ma_15 + tfib_ma_14 + tfib_ma_am_mid
+
+fib_high_am_short = (hfib_ma_am_short) / n_short
+fib_low_am_short = (lfib_ma_am_short) / n_short
+fib_close_am_short = (cfib_ma_am_short) / n_short
+fib_open_am_short = (ofib_ma_am_short) / n_short
+fib_tp_am_short = (tfib_ma_am_short) / n_short
+
+fib_high_am_mid = (hfib_ma_am_mid) / n_mid
+fib_low_am_mid = (lfib_ma_am_mid) / n_mid
+fib_close_am_mid = (cfib_ma_am_mid) / n_mid
+fib_open_am_mid = (ofib_ma_am_mid) / n_mid
+fib_tp_am_mid = (tfib_ma_am_mid) / n_mid
+
+fib_high_am = (hfib_ma_am_long) / n_long
+fib_low_am = (lfib_ma_am_long) / n_long
+fib_close_am = (cfib_ma_am_long) / n_long
+fib_open_am = (ofib_ma_am_long) / n_long
+fib_tp_am = (tfib_ma_am_long) / n_long
+
+// geometric mean = (product of xn) ^ (1 / n)
+
+hfib_ma_0_gm = hfib_ma_0
+lfib_ma_0_gm = lfib_ma_0
+cfib_ma_0_gm = cfib_ma_0
+ofib_ma_0_gm = ofib_ma_0
+tfib_ma_0_gm = tfib_ma_0
+
+if (hfib_ma_0 == 0.0)
+    hfib_ma_0_gm := 1.0
+    lfib_ma_0_gm := 1.0
+    cfib_ma_0_gm := 1.0
+    ofib_ma_0_gm := 1.0
+    tfib_ma_0_gm := 1.0
+    
+hfib_ma_1_gm = hfib_ma_1
+lfib_ma_1_gm = lfib_ma_1
+cfib_ma_1_gm = cfib_ma_1
+ofib_ma_1_gm = ofib_ma_1
+tfib_ma_1_gm = tfib_ma_1
+
+if (hfib_ma_1 == 0.0)
+    hfib_ma_1_gm := 1.0
+    lfib_ma_1_gm := 1.0
+    cfib_ma_1_gm := 1.0
+    ofib_ma_1_gm := 1.0
+    tfib_ma_1_gm := 1.0
+
+hfib_ma_2_gm = hfib_ma_2
+lfib_ma_2_gm = lfib_ma_2
+cfib_ma_2_gm = cfib_ma_2
+ofib_ma_2_gm = ofib_ma_2
+tfib_ma_2_gm = tfib_ma_2
+
+if (hfib_ma_2 == 0.0)
+    hfib_ma_2_gm := 1.0
+    lfib_ma_2_gm := 1.0
+    cfib_ma_2_gm := 1.0
+    ofib_ma_2_gm := 1.0
+    tfib_ma_2_gm := 1.0
+
+hfib_ma_3_gm = hfib_ma_3
+lfib_ma_3_gm = lfib_ma_3
+cfib_ma_3_gm = cfib_ma_3
+ofib_ma_3_gm = ofib_ma_3
+tfib_ma_3_gm = tfib_ma_3
+
+if (hfib_ma_3 == 0.0)
+    hfib_ma_3_gm := 1.0
+    lfib_ma_3_gm := 1.0
+    cfib_ma_3_gm := 1.0
+    ofib_ma_3_gm := 1.0
+    tfib_ma_3_gm := 1.0
+
+hfib_ma_4_gm = hfib_ma_4
+lfib_ma_4_gm = lfib_ma_4
+cfib_ma_4_gm = cfib_ma_4
+ofib_ma_4_gm = ofib_ma_4
+tfib_ma_4_gm = tfib_ma_4
+
+if (hfib_ma_4 == 0.0)
+    hfib_ma_4_gm := 1.0
+    lfib_ma_4_gm := 1.0
+    cfib_ma_4_gm := 1.0
+    ofib_ma_4_gm := 1.0
+    tfib_ma_4_gm := 1.0
+
+hfib_ma_5_gm = hfib_ma_5
+lfib_ma_5_gm = lfib_ma_5
+cfib_ma_5_gm = cfib_ma_5
+ofib_ma_5_gm = ofib_ma_5
+tfib_ma_5_gm = tfib_ma_5
+
+if (hfib_ma_5 == 0.0)
+    hfib_ma_5_gm := 1.0
+    lfib_ma_5_gm := 1.0
+    cfib_ma_5_gm := 1.0
+    ofib_ma_5_gm := 1.0
+    tfib_ma_5_gm := 1.0
+
+hfib_ma_6_gm = hfib_ma_6
+lfib_ma_6_gm = lfib_ma_6
+cfib_ma_6_gm = cfib_ma_6
+ofib_ma_6_gm = ofib_ma_6
+tfib_ma_6_gm = tfib_ma_6
+
+if (hfib_ma_6 == 0.0)
+    hfib_ma_6_gm := 1.0
+    lfib_ma_6_gm := 1.0
+    cfib_ma_6_gm := 1.0
+    ofib_ma_6_gm := 1.0
+    tfib_ma_6_gm := 1.0
+
+hfib_ma_7_gm = hfib_ma_7
+lfib_ma_7_gm = lfib_ma_7
+cfib_ma_7_gm = cfib_ma_7
+ofib_ma_7_gm = ofib_ma_7
+tfib_ma_7_gm = tfib_ma_7
+
+if (hfib_ma_7 == 0.0)
+    hfib_ma_7_gm := 1.0
+    lfib_ma_7_gm := 1.0
+    cfib_ma_7_gm := 1.0
+    ofib_ma_7_gm := 1.0
+    tfib_ma_7_gm := 1.0
+
+hfib_ma_8_gm = hfib_ma_8
+lfib_ma_8_gm = lfib_ma_8
+cfib_ma_8_gm = cfib_ma_8
+ofib_ma_8_gm = ofib_ma_8
+tfib_ma_8_gm = tfib_ma_8
+
+if (hfib_ma_8 == 0.0)
+    hfib_ma_8_gm := 1.0
+    lfib_ma_8_gm := 1.0
+    cfib_ma_8_gm := 1.0
+    ofib_ma_8_gm := 1.0
+    tfib_ma_8_gm := 1.0
+
+hfib_ma_9_gm = hfib_ma_9
+lfib_ma_9_gm = lfib_ma_9
+cfib_ma_9_gm = cfib_ma_9
+ofib_ma_9_gm = ofib_ma_9
+tfib_ma_9_gm = tfib_ma_9
+
+if (hfib_ma_9 == 0.0)
+    hfib_ma_9_gm := 1.0
+    lfib_ma_9_gm := 1.0
+    cfib_ma_9_gm := 1.0
+    ofib_ma_9_gm := 1.0
+    tfib_ma_9_gm := 1.0
+
+hfib_ma_10_gm = hfib_ma_10
+lfib_ma_10_gm = lfib_ma_10
+cfib_ma_10_gm = cfib_ma_10
+ofib_ma_10_gm = ofib_ma_10
+tfib_ma_10_gm = tfib_ma_10
+
+if (hfib_ma_10 == 0.0)
+    hfib_ma_10_gm := 1.0
+    lfib_ma_10_gm := 1.0
+    cfib_ma_10_gm := 1.0
+    ofib_ma_10_gm := 1.0
+    tfib_ma_10_gm := 1.0
+
+hfib_ma_11_gm = hfib_ma_11
+lfib_ma_11_gm = lfib_ma_11
+cfib_ma_11_gm = cfib_ma_11
+ofib_ma_11_gm = ofib_ma_11
+tfib_ma_11_gm = tfib_ma_11
+
+if (hfib_ma_11 == 0.0)
+    hfib_ma_11_gm := 1.0
+    lfib_ma_11_gm := 1.0
+    cfib_ma_11_gm := 1.0
+    ofib_ma_11_gm := 1.0
+    tfib_ma_11_gm := 1.0
+
+hfib_ma_12_gm = hfib_ma_12
+lfib_ma_12_gm = lfib_ma_12
+cfib_ma_12_gm = cfib_ma_12
+ofib_ma_12_gm = ofib_ma_12
+tfib_ma_12_gm = tfib_ma_12
+
+if (hfib_ma_12 == 0.0)
+    hfib_ma_12_gm := 1.0
+    lfib_ma_12_gm := 1.0
+    cfib_ma_12_gm := 1.0
+    ofib_ma_12_gm := 1.0
+    tfib_ma_12_gm := 1.0
+    
+hfib_ma_13_gm = hfib_ma_13
+lfib_ma_13_gm = lfib_ma_13
+cfib_ma_13_gm = cfib_ma_13
+ofib_ma_13_gm = ofib_ma_13
+tfib_ma_13_gm = tfib_ma_13
+
+if (hfib_ma_13 == 0.0)
+    hfib_ma_13_gm := 1.0
+    lfib_ma_13_gm := 1.0
+    cfib_ma_13_gm := 1.0
+    ofib_ma_13_gm := 1.0
+    tfib_ma_13_gm := 1.0
+    
+hfib_ma_14_gm = hfib_ma_14
+lfib_ma_14_gm = lfib_ma_14
+cfib_ma_14_gm = cfib_ma_14
+ofib_ma_14_gm = ofib_ma_14
+tfib_ma_14_gm = tfib_ma_14
+
+if (hfib_ma_14 == 0.0)
+    hfib_ma_14_gm := 1.0
+    lfib_ma_14_gm := 1.0
+    cfib_ma_14_gm := 1.0
+    ofib_ma_14_gm := 1.0
+    tfib_ma_14_gm := 1.0
+    
+hfib_ma_15_gm = hfib_ma_15
+lfib_ma_15_gm = lfib_ma_15
+cfib_ma_15_gm = cfib_ma_15
+ofib_ma_15_gm = ofib_ma_15
+tfib_ma_15_gm = tfib_ma_15
+
+if (hfib_ma_15 == 0.0)
+    hfib_ma_15_gm := 1.0
+    lfib_ma_15_gm := 1.0
+    cfib_ma_15_gm := 1.0
+    ofib_ma_15_gm := 1.0
+    tfib_ma_15_gm := 1.0
+
+hfib_ma_gm_short = hfib_ma_10_gm * hfib_ma_9_gm * hfib_ma_8_gm * hfib_ma_7_gm * hfib_ma_6_gm * hfib_ma_5_gm * hfib_ma_4_gm * hfib_ma_3_gm * hfib_ma_2_gm * hfib_ma_1_gm * hfib_ma_0_gm
+lfib_ma_gm_short = lfib_ma_10_gm * lfib_ma_9_gm * lfib_ma_8_gm * lfib_ma_7_gm * lfib_ma_6_gm * lfib_ma_5_gm * lfib_ma_4_gm * lfib_ma_3_gm * lfib_ma_2_gm * lfib_ma_1_gm * lfib_ma_0_gm
+cfib_ma_gm_short = cfib_ma_10_gm * cfib_ma_9_gm * cfib_ma_8_gm * cfib_ma_7_gm * cfib_ma_6_gm * cfib_ma_5_gm * cfib_ma_4_gm * cfib_ma_3_gm * cfib_ma_2_gm * cfib_ma_1_gm * cfib_ma_0_gm
+ofib_ma_gm_short = ofib_ma_10_gm * ofib_ma_9_gm * ofib_ma_8_gm * ofib_ma_7_gm * ofib_ma_6_gm * ofib_ma_5_gm * ofib_ma_4_gm * ofib_ma_3_gm * ofib_ma_2_gm * ofib_ma_1_gm * ofib_ma_0_gm
+tfib_ma_gm_short = tfib_ma_10_gm * tfib_ma_9_gm * tfib_ma_8_gm * tfib_ma_7_gm * tfib_ma_6_gm * tfib_ma_5_gm * tfib_ma_4_gm * tfib_ma_3_gm * tfib_ma_2_gm * tfib_ma_1_gm * tfib_ma_0_gm
+
+hfib_ma_gm_mid = hfib_ma_13_gm * hfib_ma_12_gm * hfib_ma_11_gm * hfib_ma_gm_short
+lfib_ma_gm_mid = lfib_ma_13_gm * lfib_ma_12_gm * lfib_ma_11_gm * lfib_ma_gm_short
+cfib_ma_gm_mid = cfib_ma_13_gm * cfib_ma_12_gm * cfib_ma_11_gm * cfib_ma_gm_short
+ofib_ma_gm_mid = ofib_ma_13_gm * ofib_ma_12_gm * ofib_ma_11_gm * ofib_ma_gm_short
+tfib_ma_gm_mid = tfib_ma_13_gm * tfib_ma_12_gm * tfib_ma_11_gm * tfib_ma_gm_short
+
+hfib_ma_gm = hfib_ma_15_gm * hfib_ma_14_gm * hfib_ma_gm_mid
+lfib_ma_gm = lfib_ma_15_gm * lfib_ma_14_gm * lfib_ma_gm_mid
+cfib_ma_gm = cfib_ma_15_gm * cfib_ma_14_gm * cfib_ma_gm_mid
+ofib_ma_gm = ofib_ma_15_gm * ofib_ma_14_gm * ofib_ma_gm_mid
+tfib_ma_gm = tfib_ma_15_gm * tfib_ma_14_gm * tfib_ma_gm_mid
+
+fib_high_gm_short = math.pow(hfib_ma_gm_short, 1/n_short)
+fib_low_gm_short = math.pow(lfib_ma_gm_short, 1/n_short)
+fib_close_gm_short = math.pow(cfib_ma_gm_short, 1/n_short)
+fib_open_gm_short = math.pow(ofib_ma_gm_short, 1/n_short)
+fib_tp_gm_short = math.pow(tfib_ma_gm_short, 1/n_short)
+
+fib_high_gm_mid = math.pow(hfib_ma_gm_mid, 1/n_mid)
+fib_low_gm_mid = math.pow(lfib_ma_gm_mid, 1/n_mid)
+fib_close_gm_mid = math.pow(cfib_ma_gm_mid, 1/n_mid)
+fib_open_gm_mid = math.pow(ofib_ma_gm_mid, 1/n_mid)
+fib_tp_gm_mid = math.pow(tfib_ma_gm_mid, 1/n_mid)
+
+fib_high_gm = math.pow(hfib_ma_gm, 1/n_long)
+fib_low_gm = math.pow(lfib_ma_gm, 1/n_long)
+fib_close_gm = math.pow(cfib_ma_gm, 1/n_long)
+fib_open_gm = math.pow(ofib_ma_gm, 1/n_long)
+fib_tp_gm = math.pow(tfib_ma_gm, 1/n_long)
+
+// harmonic mean = n / (∑ 1 / xn)
+
+hfib_ma_0_hm = 1/hfib_ma_0
+lfib_ma_0_hm = 1/lfib_ma_0
+cfib_ma_0_hm = 1/cfib_ma_0
+ofib_ma_0_hm = 1/ofib_ma_0
+tfib_ma_0_hm = 1/tfib_ma_0
+
+if (hfib_ma_0 == 0.0)
+    hfib_ma_0_hm := 0.0
+    lfib_ma_0_hm := 0.0
+    cfib_ma_0_hm := 0.0
+    ofib_ma_0_hm := 0.0
+    tfib_ma_0_hm := 0.0
+    
+hfib_ma_1_hm = 1/hfib_ma_1
+lfib_ma_1_hm = 1/lfib_ma_1
+cfib_ma_1_hm = 1/cfib_ma_1
+ofib_ma_1_hm = 1/ofib_ma_1
+tfib_ma_1_hm = 1/tfib_ma_1
+
+if (hfib_ma_1 == 0.0)
+    hfib_ma_1_hm := 0.0
+    lfib_ma_1_hm := 0.0
+    cfib_ma_1_hm := 0.0
+    ofib_ma_1_hm := 0.0
+    tfib_ma_1_hm := 0.0
+
+hfib_ma_2_hm = 1/hfib_ma_2
+lfib_ma_2_hm = 1/lfib_ma_2
+cfib_ma_2_hm = 1/cfib_ma_2
+ofib_ma_2_hm = 1/ofib_ma_2
+tfib_ma_2_hm = 1/tfib_ma_2
+
+if (hfib_ma_2 == 0.0)
+    hfib_ma_2_hm := 0.0
+    lfib_ma_2_hm := 0.0
+    cfib_ma_2_hm := 0.0
+    ofib_ma_2_hm := 0.0
+    tfib_ma_2_hm := 0.0
+
+hfib_ma_3_hm = 1/hfib_ma_3
+lfib_ma_3_hm = 1/lfib_ma_3
+cfib_ma_3_hm = 1/cfib_ma_3
+ofib_ma_3_hm = 1/ofib_ma_3
+tfib_ma_3_hm = 1/tfib_ma_3
+
+if (hfib_ma_3 == 0.0)
+    hfib_ma_3_hm := 0.0
+    lfib_ma_3_hm := 0.0
+    cfib_ma_3_hm := 0.0
+    ofib_ma_3_hm := 0.0
+    tfib_ma_3_hm := 0.0
+
+hfib_ma_4_hm = 1/hfib_ma_4
+lfib_ma_4_hm = 1/lfib_ma_4
+cfib_ma_4_hm = 1/cfib_ma_4
+ofib_ma_4_hm = 1/ofib_ma_4
+tfib_ma_4_hm = 1/tfib_ma_4
+
+if (hfib_ma_4 == 0.0)
+    hfib_ma_4_hm := 0.0
+    lfib_ma_4_hm := 0.0
+    cfib_ma_4_hm := 0.0
+    ofib_ma_4_hm := 0.0
+    tfib_ma_4_hm := 0.0
+
+hfib_ma_5_hm = 1/hfib_ma_5
+lfib_ma_5_hm = 1/lfib_ma_5
+cfib_ma_5_hm = 1/cfib_ma_5
+ofib_ma_5_hm = 1/ofib_ma_5
+tfib_ma_5_hm = 1/tfib_ma_5
+
+if (hfib_ma_5 == 0.0)
+    hfib_ma_5_hm := 0.0
+    lfib_ma_5_hm := 0.0
+    cfib_ma_5_hm := 0.0
+    ofib_ma_5_hm := 0.0
+    tfib_ma_5_hm := 0.0
+
+hfib_ma_6_hm = 1/hfib_ma_6
+lfib_ma_6_hm = 1/lfib_ma_6
+cfib_ma_6_hm = 1/cfib_ma_6
+ofib_ma_6_hm = 1/ofib_ma_6
+tfib_ma_6_hm = 1/tfib_ma_6
+
+if (hfib_ma_6 == 0.0)
+    hfib_ma_6_hm := 0.0
+    lfib_ma_6_hm := 0.0
+    cfib_ma_6_hm := 0.0
+    ofib_ma_6_hm := 0.0
+    tfib_ma_6_hm := 0.0
+
+hfib_ma_7_hm = 1/hfib_ma_7
+lfib_ma_7_hm = 1/lfib_ma_7
+cfib_ma_7_hm = 1/cfib_ma_7
+ofib_ma_7_hm = 1/ofib_ma_7
+tfib_ma_7_hm = 1/tfib_ma_7
+
+if (hfib_ma_7 == 0.0)
+    hfib_ma_7_hm := 0.0
+    lfib_ma_7_hm := 0.0
+    cfib_ma_7_hm := 0.0
+    ofib_ma_7_hm := 0.0
+    tfib_ma_7_hm := 0.0
+
+hfib_ma_8_hm = 1/hfib_ma_8
+lfib_ma_8_hm = 1/lfib_ma_8
+cfib_ma_8_hm = 1/cfib_ma_8
+ofib_ma_8_hm = 1/ofib_ma_8
+tfib_ma_8_hm = 1/tfib_ma_8
+
+if (hfib_ma_8 == 0.0)
+    hfib_ma_8_hm := 0.0
+    lfib_ma_8_hm := 0.0
+    cfib_ma_8_hm := 0.0
+    ofib_ma_8_hm := 0.0
+    tfib_ma_8_hm := 0.0
+
+hfib_ma_9_hm = 1/hfib_ma_9
+lfib_ma_9_hm = 1/lfib_ma_9
+cfib_ma_9_hm = 1/cfib_ma_9
+ofib_ma_9_hm = 1/ofib_ma_9
+tfib_ma_9_hm = 1/tfib_ma_9
+
+if (hfib_ma_9 == 0.0)
+    hfib_ma_9_hm := 0.0
+    lfib_ma_9_hm := 0.0
+    cfib_ma_9_hm := 0.0
+    ofib_ma_9_hm := 0.0
+    tfib_ma_9_hm := 0.0
+
+hfib_ma_10_hm = 1/hfib_ma_10
+lfib_ma_10_hm = 1/lfib_ma_10
+cfib_ma_10_hm = 1/cfib_ma_10
+ofib_ma_10_hm = 1/ofib_ma_10
+tfib_ma_10_hm = 1/tfib_ma_10
+
+if (hfib_ma_10 == 0.0)
+    hfib_ma_10_hm := 0.0
+    lfib_ma_10_hm := 0.0
+    cfib_ma_10_hm := 0.0
+    ofib_ma_10_hm := 0.0
+    tfib_ma_10_hm := 0.0
+
+hfib_ma_11_hm = 1/hfib_ma_11
+lfib_ma_11_hm = 1/lfib_ma_11
+cfib_ma_11_hm = 1/cfib_ma_11
+ofib_ma_11_hm = 1/ofib_ma_11
+tfib_ma_11_hm = 1/tfib_ma_11
+
+if (hfib_ma_11 == 0.0)
+    hfib_ma_11_hm := 0.0
+    lfib_ma_11_hm := 0.0
+    cfib_ma_11_hm := 0.0
+    ofib_ma_11_hm := 0.0
+    tfib_ma_11_hm := 0.0
+
+hfib_ma_12_hm = 1/hfib_ma_12
+lfib_ma_12_hm = 1/lfib_ma_12
+cfib_ma_12_hm = 1/cfib_ma_12
+ofib_ma_12_hm = 1/ofib_ma_12
+tfib_ma_12_hm = 1/tfib_ma_12
+
+if (hfib_ma_12 == 0.0)
+    hfib_ma_12_hm := 0.0
+    lfib_ma_12_hm := 0.0
+    cfib_ma_12_hm := 0.0
+    ofib_ma_12_hm := 0.0
+    tfib_ma_12_hm := 0.0
+
+hfib_ma_13_hm = 1/hfib_ma_13
+lfib_ma_13_hm = 1/lfib_ma_13
+cfib_ma_13_hm = 1/cfib_ma_13
+ofib_ma_13_hm = 1/ofib_ma_13
+tfib_ma_13_hm = 1/tfib_ma_13
+
+if (hfib_ma_13 == 0.0)
+    hfib_ma_13_hm := 0.0
+    lfib_ma_13_hm := 0.0
+    cfib_ma_13_hm := 0.0
+    ofib_ma_13_hm := 0.0
+    tfib_ma_13_hm := 0.0
+
+hfib_ma_14_hm = 1/hfib_ma_14
+lfib_ma_14_hm = 1/lfib_ma_14
+cfib_ma_14_hm = 1/cfib_ma_14
+ofib_ma_14_hm = 1/ofib_ma_14
+tfib_ma_14_hm = 1/tfib_ma_14
+
+if (hfib_ma_14 == 0.0)
+    hfib_ma_14_hm := 0.0
+    lfib_ma_14_hm := 0.0
+    cfib_ma_14_hm := 0.0
+    ofib_ma_14_hm := 0.0
+    tfib_ma_14_hm := 0.0
+
+hfib_ma_15_hm = 1/hfib_ma_15
+lfib_ma_15_hm = 1/lfib_ma_15
+cfib_ma_15_hm = 1/cfib_ma_15
+ofib_ma_15_hm = 1/ofib_ma_15
+tfib_ma_15_hm = 1/tfib_ma_15
+
+if (hfib_ma_15 == 0.0)
+    hfib_ma_15_hm := 0.0
+    lfib_ma_15_hm := 0.0
+    cfib_ma_15_hm := 0.0
+    ofib_ma_15_hm := 0.0
+    tfib_ma_15_hm := 0.0
+
+hfib_ma_hm_short = hfib_ma_10_hm + hfib_ma_9_hm + hfib_ma_8_hm + hfib_ma_7_hm + hfib_ma_6_hm + hfib_ma_5_hm + hfib_ma_4_hm + hfib_ma_3_hm + hfib_ma_2_hm + hfib_ma_1_hm + hfib_ma_0_hm
+lfib_ma_hm_short = lfib_ma_10_hm + lfib_ma_9_hm + lfib_ma_8_hm + lfib_ma_7_hm + lfib_ma_6_hm + lfib_ma_5_hm + lfib_ma_4_hm + lfib_ma_3_hm + lfib_ma_2_hm + lfib_ma_1_hm + lfib_ma_0_hm
+cfib_ma_hm_short = cfib_ma_10_hm + cfib_ma_9_hm + cfib_ma_8_hm + cfib_ma_7_hm + cfib_ma_6_hm + cfib_ma_5_hm + cfib_ma_4_hm + cfib_ma_3_hm + cfib_ma_2_hm + cfib_ma_1_hm + cfib_ma_0_hm
+ofib_ma_hm_short = ofib_ma_10_hm + ofib_ma_9_hm + ofib_ma_8_hm + ofib_ma_7_hm + ofib_ma_6_hm + ofib_ma_5_hm + ofib_ma_4_hm + ofib_ma_3_hm + ofib_ma_2_hm + ofib_ma_1_hm + ofib_ma_0_hm
+tfib_ma_hm_short = tfib_ma_10_hm + tfib_ma_9_hm + tfib_ma_8_hm + tfib_ma_7_hm + tfib_ma_6_hm + tfib_ma_5_hm + tfib_ma_4_hm + tfib_ma_3_hm + tfib_ma_2_hm + tfib_ma_1_hm + tfib_ma_0_hm
+
+hfib_ma_hm_mid = hfib_ma_13_hm + hfib_ma_12_hm + hfib_ma_11_hm + hfib_ma_hm_short
+lfib_ma_hm_mid = lfib_ma_13_hm + lfib_ma_12_hm + lfib_ma_11_hm + lfib_ma_hm_short
+cfib_ma_hm_mid = cfib_ma_13_hm + cfib_ma_12_hm + cfib_ma_11_hm + cfib_ma_hm_short
+ofib_ma_hm_mid = ofib_ma_13_hm + ofib_ma_12_hm + ofib_ma_11_hm + ofib_ma_hm_short
+tfib_ma_hm_mid = tfib_ma_13_hm + tfib_ma_12_hm + tfib_ma_11_hm + tfib_ma_hm_short
+
+hfib_ma_hm_long = hfib_ma_15_hm + hfib_ma_14_hm + hfib_ma_hm_mid
+lfib_ma_hm_long = lfib_ma_15_hm + lfib_ma_14_hm + lfib_ma_hm_mid
+cfib_ma_hm_long = cfib_ma_15_hm + cfib_ma_14_hm + cfib_ma_hm_mid
+ofib_ma_hm_long = ofib_ma_15_hm + ofib_ma_14_hm + ofib_ma_hm_mid
+tfib_ma_hm_long = tfib_ma_15_hm + tfib_ma_14_hm + tfib_ma_hm_mid
+
+fib_high_hm_short = n_short / (hfib_ma_hm_short)
+fib_low_hm_short = n_short / (lfib_ma_hm_short)
+fib_close_hm_short = n_short / (cfib_ma_hm_short)
+fib_open_hm_short = n_short / (ofib_ma_hm_short)
+fib_tp_hm_short = n_short / (tfib_ma_hm_short)
+
+fib_high_hm_mid = n_mid / (hfib_ma_hm_mid)
+fib_low_hm_mid = n_mid / (lfib_ma_hm_mid)
+fib_close_hm_mid = n_mid / (cfib_ma_hm_mid)
+fib_open_hm_mid = n_mid / (ofib_ma_hm_mid)
+fib_tp_hm_mid = n_mid / (tfib_ma_hm_mid)
+
+fib_high_hm = n_long / (hfib_ma_hm_long)
+fib_low_hm = n_long / (lfib_ma_hm_long)
+fib_close_hm = n_long / (cfib_ma_hm_long)
+fib_open_hm = n_long / (ofib_ma_hm_long)
+fib_tp_hm = n_long / (tfib_ma_hm_long)
+
+// quadratic mean = (∑ xn ^ y)^(1 / n), y = 2
+
+y_qm = 2.0
+
+hfib_ma_qm_short = math.pow(hfib_ma_10, y_qm) + math.pow(hfib_ma_9, y_qm) + math.pow(hfib_ma_8, y_qm) + math.pow(hfib_ma_7, y_qm) + math.pow(hfib_ma_6, y_qm) + math.pow(hfib_ma_5, y_qm) + math.pow(hfib_ma_4, y_qm) + math.pow(hfib_ma_3, y_qm) + math.pow(hfib_ma_2, y_qm) + math.pow(hfib_ma_1, y_qm) + math.pow(hfib_ma_0, y_qm)
+lfib_ma_qm_short = math.pow(lfib_ma_10, y_qm) + math.pow(lfib_ma_9, y_qm) + math.pow(lfib_ma_8, y_qm) + math.pow(lfib_ma_7, y_qm) + math.pow(lfib_ma_6, y_qm) + math.pow(lfib_ma_5, y_qm) + math.pow(lfib_ma_4, y_qm) + math.pow(lfib_ma_3, y_qm) + math.pow(lfib_ma_2, y_qm) + math.pow(lfib_ma_1, y_qm) + math.pow(lfib_ma_0, y_qm)
+cfib_ma_qm_short = math.pow(cfib_ma_10, y_qm) + math.pow(cfib_ma_9, y_qm) + math.pow(cfib_ma_8, y_qm) + math.pow(cfib_ma_7, y_qm) + math.pow(cfib_ma_6, y_qm) + math.pow(cfib_ma_5, y_qm) + math.pow(cfib_ma_4, y_qm) + math.pow(cfib_ma_3, y_qm) + math.pow(cfib_ma_2, y_qm) + math.pow(cfib_ma_1, y_qm) + math.pow(cfib_ma_0, y_qm)
+ofib_ma_qm_short = math.pow(ofib_ma_10, y_qm) + math.pow(ofib_ma_9, y_qm) + math.pow(ofib_ma_8, y_qm) + math.pow(ofib_ma_7, y_qm) + math.pow(ofib_ma_6, y_qm) + math.pow(ofib_ma_5, y_qm) + math.pow(ofib_ma_4, y_qm) + math.pow(ofib_ma_3, y_qm) + math.pow(ofib_ma_2, y_qm) + math.pow(ofib_ma_1, y_qm) + math.pow(ofib_ma_0, y_qm)
+tfib_ma_qm_short = math.pow(tfib_ma_10, y_qm) + math.pow(tfib_ma_9, y_qm) + math.pow(tfib_ma_8, y_qm) + math.pow(tfib_ma_7, y_qm) + math.pow(tfib_ma_6, y_qm) + math.pow(tfib_ma_5, y_qm) + math.pow(tfib_ma_4, y_qm) + math.pow(tfib_ma_3, y_qm) + math.pow(tfib_ma_2, y_qm) + math.pow(tfib_ma_1, y_qm) + math.pow(tfib_ma_0, y_qm)
+
+hfib_ma_qm_mid = math.pow(hfib_ma_13, y_qm) + math.pow(hfib_ma_12, y_qm) + math.pow(hfib_ma_11, y_qm) + hfib_ma_qm_short
+lfib_ma_qm_mid = math.pow(lfib_ma_13, y_qm) + math.pow(lfib_ma_12, y_qm) + math.pow(lfib_ma_11, y_qm) + lfib_ma_qm_short
+cfib_ma_qm_mid = math.pow(cfib_ma_13, y_qm) + math.pow(cfib_ma_12, y_qm) + math.pow(cfib_ma_11, y_qm) + cfib_ma_qm_short
+ofib_ma_qm_mid = math.pow(ofib_ma_13, y_qm) + math.pow(ofib_ma_12, y_qm) + math.pow(ofib_ma_11, y_qm) + ofib_ma_qm_short
+tfib_ma_qm_mid = math.pow(tfib_ma_13, y_qm) + math.pow(tfib_ma_12, y_qm) + math.pow(tfib_ma_11, y_qm) + tfib_ma_qm_short
+
+hfib_ma_qm_long = math.pow(hfib_ma_15, y_qm) + math.pow(hfib_ma_14, y_qm) + hfib_ma_qm_mid
+lfib_ma_qm_long = math.pow(lfib_ma_15, y_qm) + math.pow(lfib_ma_14, y_qm) + lfib_ma_qm_mid
+cfib_ma_qm_long = math.pow(cfib_ma_15, y_qm) + math.pow(cfib_ma_14, y_qm) + cfib_ma_qm_mid
+ofib_ma_qm_long = math.pow(ofib_ma_15, y_qm) + math.pow(ofib_ma_14, y_qm) + ofib_ma_qm_mid
+tfib_ma_qm_long = math.pow(tfib_ma_15, y_qm) + math.pow(tfib_ma_14, y_qm) + tfib_ma_qm_mid
+
+fib_high_qm_short = math.pow((hfib_ma_qm_short) / n_short, 1/y_qm)
+fib_low_qm_short = math.pow((lfib_ma_qm_short) / n_short, 1/y_qm)
+fib_close_qm_short = math.pow((cfib_ma_qm_short) / n_short, 1/y_qm)
+fib_open_qm_short = math.pow((ofib_ma_qm_short) / n_short, 1/y_qm)
+fib_tp_qm_short = math.pow((tfib_ma_qm_short) / n_short, 1/y_qm)
+
+fib_high_qm_mid = math.pow((hfib_ma_qm_mid) / n_mid, 1/y_qm)
+fib_low_qm_mid = math.pow((lfib_ma_qm_mid) / n_mid, 1/y_qm)
+fib_close_qm_mid = math.pow((cfib_ma_qm_mid) / n_mid, 1/y_qm)
+fib_open_qm_mid = math.pow((ofib_ma_qm_mid) / n_mid, 1/y_qm)
+fib_tp_qm_mid = math.pow((tfib_ma_qm_mid) / n_mid, 1/y_qm)
+
+fib_high_qm = math.pow((hfib_ma_qm_long) / n_long, 1/y_qm)
+fib_low_qm = math.pow((lfib_ma_qm_long) / n_long, 1/y_qm)
+fib_close_qm = math.pow((cfib_ma_qm_long) / n_long, 1/y_qm)
+fib_open_qm = math.pow((ofib_ma_qm_long) / n_long, 1/y_qm)
+fib_tp_qm = math.pow((tfib_ma_qm_long) / n_long, 1/y_qm)
+
+// cubic mean = (∑ xn ^ y / n)^(1 / y), y = 3
+
+y_cm = 3.0
+
+hfib_ma_cm_short = math.pow(hfib_ma_10, y_cm) + math.pow(hfib_ma_9, y_cm) + math.pow(hfib_ma_8, y_cm) + math.pow(hfib_ma_7, y_cm) + math.pow(hfib_ma_6, y_cm) + math.pow(hfib_ma_5, y_cm) + math.pow(hfib_ma_4, y_cm) + math.pow(hfib_ma_3, y_cm) + math.pow(hfib_ma_2, y_cm) + math.pow(hfib_ma_1, y_cm) + math.pow(hfib_ma_0, y_cm)
+lfib_ma_cm_short = math.pow(lfib_ma_10, y_cm) + math.pow(lfib_ma_9, y_cm) + math.pow(lfib_ma_8, y_cm) + math.pow(lfib_ma_7, y_cm) + math.pow(lfib_ma_6, y_cm) + math.pow(lfib_ma_5, y_cm) + math.pow(lfib_ma_4, y_cm) + math.pow(lfib_ma_3, y_cm) + math.pow(lfib_ma_2, y_cm) + math.pow(lfib_ma_1, y_cm) + math.pow(lfib_ma_0, y_cm)
+cfib_ma_cm_short = math.pow(cfib_ma_10, y_cm) + math.pow(cfib_ma_9, y_cm) + math.pow(cfib_ma_8, y_cm) + math.pow(cfib_ma_7, y_cm) + math.pow(cfib_ma_6, y_cm) + math.pow(cfib_ma_5, y_cm) + math.pow(cfib_ma_4, y_cm) + math.pow(cfib_ma_3, y_cm) + math.pow(cfib_ma_2, y_cm) + math.pow(cfib_ma_1, y_cm) + math.pow(cfib_ma_0, y_cm)
+ofib_ma_cm_short = math.pow(ofib_ma_10, y_cm) + math.pow(ofib_ma_9, y_cm) + math.pow(ofib_ma_8, y_cm) + math.pow(ofib_ma_7, y_cm) + math.pow(ofib_ma_6, y_cm) + math.pow(ofib_ma_5, y_cm) + math.pow(ofib_ma_4, y_cm) + math.pow(ofib_ma_3, y_cm) + math.pow(ofib_ma_2, y_cm) + math.pow(ofib_ma_1, y_cm) + math.pow(ofib_ma_0, y_cm)
+tfib_ma_cm_short = math.pow(tfib_ma_10, y_cm) + math.pow(tfib_ma_9, y_cm) + math.pow(tfib_ma_8, y_cm) + math.pow(tfib_ma_7, y_cm) + math.pow(tfib_ma_6, y_cm) + math.pow(tfib_ma_5, y_cm) + math.pow(tfib_ma_4, y_cm) + math.pow(tfib_ma_3, y_cm) + math.pow(tfib_ma_2, y_cm) + math.pow(tfib_ma_1, y_cm) + math.pow(tfib_ma_0, y_cm)
+
+hfib_ma_cm_mid = math.pow(hfib_ma_13, y_cm) + math.pow(hfib_ma_12, y_cm) + math.pow(hfib_ma_11, y_cm) + hfib_ma_cm_short
+lfib_ma_cm_mid = math.pow(lfib_ma_13, y_cm) + math.pow(lfib_ma_12, y_cm) + math.pow(lfib_ma_11, y_cm) + lfib_ma_cm_short
+cfib_ma_cm_mid = math.pow(cfib_ma_13, y_cm) + math.pow(cfib_ma_12, y_cm) + math.pow(cfib_ma_11, y_cm) + cfib_ma_cm_short
+ofib_ma_cm_mid = math.pow(ofib_ma_13, y_cm) + math.pow(ofib_ma_12, y_cm) + math.pow(ofib_ma_11, y_cm) + ofib_ma_cm_short
+tfib_ma_cm_mid = math.pow(tfib_ma_13, y_cm) + math.pow(tfib_ma_12, y_cm) + math.pow(tfib_ma_11, y_cm) + tfib_ma_cm_short
+
+hfib_ma_cm_long = math.pow(hfib_ma_15, y_cm) + math.pow(hfib_ma_14, y_cm) + hfib_ma_cm_mid
+lfib_ma_cm_long = math.pow(lfib_ma_15, y_cm) + math.pow(lfib_ma_14, y_cm) + lfib_ma_cm_mid
+cfib_ma_cm_long = math.pow(cfib_ma_15, y_cm) + math.pow(cfib_ma_14, y_cm) + cfib_ma_cm_mid
+ofib_ma_cm_long = math.pow(ofib_ma_15, y_cm) + math.pow(ofib_ma_14, y_cm) + ofib_ma_cm_mid
+tfib_ma_cm_long = math.pow(tfib_ma_15, y_cm) + math.pow(tfib_ma_14, y_cm) + tfib_ma_cm_mid
+
+fib_high_cm_short = math.pow((hfib_ma_cm_short) / n_short, 1/y_cm)
+fib_low_cm_short = math.pow((lfib_ma_cm_short) / n_short, 1/y_cm)
+fib_close_cm_short = math.pow((cfib_ma_cm_short) / n_short, 1/y_cm)
+fib_open_cm_short = math.pow((ofib_ma_cm_short) / n_short, 1/y_cm)
+fib_tp_cm_short = math.pow((tfib_ma_cm_short) / n_short, 1/y_cm)
+
+fib_high_cm_mid = math.pow((hfib_ma_cm_mid) / n_mid, 1/y_cm)
+fib_low_cm_mid = math.pow((lfib_ma_cm_mid) / n_mid, 1/y_cm)
+fib_close_cm_mid = math.pow((cfib_ma_cm_mid) / n_mid, 1/y_cm)
+fib_open_cm_mid = math.pow((ofib_ma_cm_mid) / n_mid, 1/y_cm)
+fib_tp_cm_mid = math.pow((tfib_ma_cm_mid) / n_mid, 1/y_cm)
+
+fib_high_cm = math.pow((hfib_ma_cm_long) / n_long, 1/y_cm)
+fib_low_cm = math.pow((lfib_ma_cm_long) / n_long, 1/y_cm)
+fib_close_cm = math.pow((cfib_ma_cm_long) / n_long, 1/y_cm)
+fib_open_cm = math.pow((ofib_ma_cm_long) / n_long, 1/y_cm)
+fib_tp_cm = math.pow((tfib_ma_cm_long) / n_long, 1/y_cm)
+
+// vertical deviation = mean * a * b ^ (x / y) / c, where user defines a, b, x, y, and c.
+// ex., deviation as a percent of the mean = 1.414213562 = 2^(1/2) = Pythagoras's constant.
+// ex., deviation as a percent of the mean = 0.7071067812 = [1 / sqrt(2)] = [sqrt(2) / 2] = sin 45˚ = cos 45˚.
+
+dev_yes = input(true, "Display vertical deviation?", group = "Vertical Deviation is measured from the selected Mean of Prices' Moving Averages, and is equal to the Product of that Mean and a Multiplier, M.")
+
+// the user defined deviation is measured from the specified deviation origin: high and low prices plot, close prices plot, or average prices plot.
+
+dev_origin = input.string("High and Low", "Deviation origin", inline = "Deviation origin", options = ["High and Low", "Close", "Average"], group = "Select the Origin Mean of Prices' Moving Averages from which Deviation is measured.")
+
+// define deviation
+
+dev_constant = input.string("Golden ratio = (1+√5)/2", "Constant", inline = "Constant", options = ["0", "Golden ratio conjugate = |(1-√5)/2|", "1", "Delian constant = 2^(1/3)", "Pythagoras's constant = 2^(1/2)", "3^(1/3)", "Supergolden ratio = (1+((29+3*93^(1/2))/2)^(1/3)+((29-3*93^(1/2))/2)^(1/3))/3", "Golden ratio = (1+√5)/2", "Theodorus' constant = 3^(1/2)", "2", "5^(1/2)", "Universal parabolic constant = ln(1+2^(1/2))+2^(1/2)", "Silver ratio = 1+2^(1/2)", "Euler's number = ∑(1/n!)", "2^(3/2) = 8^(1/2) = 2•2^(1/2)", "3", "Pi", "3•2^(1/2)", "3^(3/2) = 27^(1/2) = 3•3^(1/2)", "5"], group = "M = {[a1•b1^(x1/y1)] + [a2•constant^(x2/y2)]} * (c/d)")
+
+
+dev_b2 = 0.0
+
+if (dev_constant == "Golden ratio conjugate = |(1-√5)/2|")
+    dev_b2 := math.rphi
+else
+    if (dev_constant == "Delian constant = 2^(1/3)")
+        dev_b2 := 1.2599210499
+    else
+        if (dev_constant == "Pythagoras's constant = 2^(1/2)")
+            dev_b2 := 1.414213562
+        else
+            if (dev_constant == "3^(1/3)")
+                dev_b2 := 1.4422495703
+            else
+                if (dev_constant == "Supergolden ratio = (1+((29+3*93^(1/2))/2)^(1/3)+((29-3*93^(1/2))/2)^(1/3))/3")
+                    dev_b2 := 1.465571232
+                else
+                    if (dev_constant == "Golden ratio = (1+√5)/2")
+                        dev_b2 := math.phi
+                    else
+                        if (dev_constant == "Theodorus' constant = 3^(1/2)")
+                            dev_b2 := 1.732050808
+                        else
+                            if (dev_constant == "2")
+                                dev_b2 := 2.0
+                            else
+                                if (dev_constant == "5^(1/2)")
+                                    dev_b2 := 2.236067978
+                                else
+                                    if (dev_constant == "Silver ratio = 1+2^(1/2)")
+                                        dev_b2 := 2.414213562
+                                    else
+                                        if (dev_constant == "Euler's number = ∑(1/n!)")
+                                            dev_b2 := math.e
+                                        else
+                                            if (dev_constant == "Universal parabolic constant = ln(1+2^(1/2))+2^(1/2)")
+                                                dev_b2 := 2.295587149
+                                            else
+                                                if (dev_constant == "2^(3/2) = 8^(1/2) = 2•2^(1/2)")
+                                                    dev_b2 := 2.8284271247
+                                                else
+                                                    if (dev_constant == "3")
+                                                        dev_b2 := 3.0
+                                                    else
+                                                        if (dev_constant == "Pi")
+                                                            dev_b2 := math.pi
+                                                        else
+                                                            if (dev_constant == "3•2^(1/2)")
+                                                                dev_b2 := 4.242640687
+                                                            else
+                                                                if (dev_constant == "3^(3/2) = 27^(1/2) = 3•3^(1/2)")
+                                                                    dev_b2 := 5.196152423
+                                                                else
+                                                                    if (dev_constant == "5")
+                                                                        dev_b2 := 5.0
+                                                                    else
+                                                                        if (dev_constant == "1")
+                                                                            dev_b2 := 1.0
+                                                                        else
+                                                                            if (dev_constant == "0")
+                                                                                dev_b2 := 0.0
+
+
+//math.pi - is a named constant for Archimedes’ constant. It is equal to 3.1415926535897932.
+//math.phi - is a named constant for the golden ratio. It is equal to 1.6180339887498948.
+//math.rphi - is a named constant for the golden ratio conjugate. It is equal to 0.6180339887498948.
+//math.e - is a named constant for Euler’s number. It is equal to 2.7182818284590452.
+
+dev_a1 = input(0.0, title = "A1", group = "M = {[a1•b1^(x1/y1)] + [a2•constant^(x2/y2)]} * (c/d)")
+dev_b1 = input(0.0, title = "B1", group = "M = {[a1•b1^(x1/y1)] + [a2•constant^(x2/y2)]} * (c/d)")
+dev_x1 = input(1.0, title = "X1", group = "M = {[a1•b1^(x1/y1)] + [a2•constant^(x2/y2)]} * (c/d)")
+dev_y1 = input(1.0, title = "Y1", group = "M = {[a1•b1^(x1/y1)] + [a2•constant^(x2/y2)]} * (c/d)")
+dev_a2 = input(1.0, title = "A2", group = "M = {[a1•b1^(x1/y1)] + [a2•constant^(x2/y2)]} * (c/d)")
+dev_x2 = input(3.0, title = "X2", group = "M = {[a1•b1^(x1/y1)] + [a2•constant^(x2/y2)]} * (c/d)")
+dev_y2 = input(1.0, title = "Y2", group = "M = {[a1•b1^(x1/y1)] + [a2•constant^(x2/y2)]} * (c/d)")
+dev_c = input(1.0, title = "C", group = "M = {[a1•b1^(x1/y1)] + [a2•constant^(x2/y2)]} * (c/d)")
+dev_d = input(100.0, title = "D", group = "M = {[a1•b1^(x1/y1)] + [a2•constant^(x2/y2)]} * (c/d)")
+
+
+dev = ((dev_a1 * math.pow(dev_b1, (dev_x1 / dev_y1)) + dev_a2 * math.pow(dev_b2, (dev_x2 / dev_y2))) * (dev_c / dev_d))
+
+//arithmetic mean plot deviation
+
+fib_high_am_deviation_short = fib_high_am_short + fib_high_am_short * dev
+fib_low_am_deviation_short = fib_low_am_short - fib_low_am_short * dev
+fib_close_am_upperdeviation_short = fib_close_am_short + fib_close_am_short * dev
+fib_close_am_lowerdeviation_short = fib_close_am_short - fib_close_am_short * dev
+fib_tp_am_upperdeviation_short = fib_tp_am_short + fib_tp_am_short * dev
+fib_tp_am_lowerdeviation_short = fib_tp_am_short - fib_tp_am_short * dev
+
+fib_high_am_deviation_mid = fib_high_am_mid + fib_high_am_mid * dev
+fib_low_am_deviation_mid = fib_low_am_mid - fib_low_am_mid * dev
+fib_close_am_upperdeviation_mid = fib_close_am_mid + fib_close_am_mid * dev
+fib_close_am_lowerdeviation_mid = fib_close_am_mid - fib_close_am_mid * dev
+fib_tp_am_upperdeviation_mid = fib_tp_am_mid + fib_tp_am_mid * dev
+fib_tp_am_lowerdeviation_mid = fib_tp_am_mid - fib_tp_am_mid * dev
+
+fib_high_am_deviation = fib_high_am + fib_high_am * dev
+fib_low_am_deviation = fib_low_am - fib_low_am * dev
+fib_close_am_upperdeviation = fib_close_am + fib_close_am * dev
+fib_close_am_lowerdeviation = fib_close_am - fib_close_am * dev
+fib_tp_am_upperdeviation = fib_tp_am + fib_tp_am * dev
+fib_tp_am_lowerdeviation = fib_tp_am - fib_tp_am * dev
+
+// geometric mean plot deviation
+
+fib_high_gm_deviation_short = fib_high_gm_short + fib_high_gm_short * dev
+fib_low_gm_deviation_short = fib_low_gm_short - fib_low_gm_short * dev
+fib_close_gm_upperdeviation_short = fib_close_gm_short + fib_close_gm_short * dev
+fib_close_gm_lowerdeviation_short = fib_close_gm_short - fib_close_gm_short * dev
+fib_tp_gm_upperdeviation_short = fib_tp_gm_short + fib_tp_gm_short * dev
+fib_tp_gm_lowerdeviation_short = fib_tp_gm_short - fib_tp_gm_short * dev
+
+fib_high_gm_deviation_mid = fib_high_gm_mid + fib_high_gm_mid * dev
+fib_low_gm_deviation_mid = fib_low_gm_mid - fib_low_gm_mid * dev
+fib_close_gm_upperdeviation_mid = fib_close_gm_mid + fib_close_gm_mid * dev
+fib_close_gm_lowerdeviation_mid = fib_close_gm_mid - fib_close_gm_mid * dev
+fib_tp_gm_upperdeviation_mid = fib_tp_gm_mid + fib_tp_gm_mid * dev
+fib_tp_gm_lowerdeviation_mid = fib_tp_gm_mid - fib_tp_gm_mid * dev
+
+fib_high_gm_deviation = fib_high_gm + fib_high_gm * dev
+fib_low_gm_deviation = fib_low_gm - fib_low_gm * dev
+fib_close_gm_upperdeviation = fib_close_gm + fib_close_gm * dev
+fib_close_gm_lowerdeviation = fib_close_gm - fib_close_gm * dev
+fib_tp_gm_upperdeviation = fib_tp_gm + fib_tp_gm * dev
+fib_tp_gm_lowerdeviation = fib_tp_gm - fib_tp_gm * dev
+
+// harmonic mean plot deviation
+
+fib_high_hm_deviation_short = fib_high_hm_short + fib_high_hm_short * dev
+fib_low_hm_deviation_short = fib_low_hm_short - fib_low_hm_short * dev
+fib_close_hm_upperdeviation_short = fib_close_hm_short + fib_close_hm_short * dev
+fib_close_hm_lowerdeviation_short = fib_close_hm_short - fib_close_hm_short * dev
+fib_tp_hm_upperdeviation_short = fib_tp_hm_short + fib_tp_hm_short * dev
+fib_tp_hm_lowerdeviation_short = fib_tp_hm_short - fib_tp_hm_short * dev
+
+fib_high_hm_deviation_mid = fib_high_hm_mid + fib_high_hm_mid * dev
+fib_low_hm_deviation_mid = fib_low_hm_mid - fib_low_hm_mid * dev
+fib_close_hm_upperdeviation_mid = fib_close_hm_mid + fib_close_hm_mid * dev
+fib_close_hm_lowerdeviation_mid = fib_close_hm_mid - fib_close_hm_mid * dev
+fib_tp_hm_upperdeviation_mid = fib_tp_hm_mid + fib_tp_hm_mid * dev
+fib_tp_hm_lowerdeviation_mid = fib_tp_hm_mid - fib_tp_hm_mid * dev
+
+fib_high_hm_deviation = fib_high_hm + fib_high_hm * dev
+fib_low_hm_deviation = fib_low_hm - fib_low_hm * dev
+fib_close_hm_upperdeviation = fib_close_hm + fib_close_hm * dev
+fib_close_hm_lowerdeviation = fib_close_hm - fib_close_hm * dev
+fib_tp_hm_upperdeviation = fib_tp_hm + fib_tp_hm * dev
+fib_tp_hm_lowerdeviation = fib_tp_hm - fib_tp_hm * dev
+
+// quadratic mean plot deviation
+
+fib_high_qm_deviation_short = fib_high_qm_short + fib_high_qm_short * dev
+fib_low_qm_deviation_short = fib_low_qm_short - fib_low_qm_short * dev
+fib_close_qm_upperdeviation_short = fib_close_qm_short + fib_close_qm_short * dev
+fib_close_qm_lowerdeviation_short = fib_close_qm_short - fib_close_qm_short * dev
+fib_tp_qm_upperdeviation_short = fib_tp_qm_short + fib_tp_qm_short * dev
+fib_tp_qm_lowerdeviation_short = fib_tp_qm_short - fib_tp_qm_short * dev
+
+fib_high_qm_deviation_mid = fib_high_qm_mid + fib_high_qm_mid * dev
+fib_low_qm_deviation_mid = fib_low_qm_mid - fib_low_qm_mid * dev
+fib_close_qm_upperdeviation_mid = fib_close_qm_mid + fib_close_qm_mid * dev
+fib_close_qm_lowerdeviation_mid = fib_close_qm_mid - fib_close_qm_mid * dev
+fib_tp_qm_upperdeviation_mid = fib_tp_qm_mid + fib_tp_qm_mid * dev
+fib_tp_qm_lowerdeviation_mid = fib_tp_qm_mid - fib_tp_qm_mid * dev
+
+fib_high_qm_deviation = fib_high_qm + fib_high_qm * dev
+fib_low_qm_deviation = fib_low_qm - fib_low_qm * dev
+fib_close_qm_upperdeviation = fib_close_qm + fib_close_qm * dev
+fib_close_qm_lowerdeviation = fib_close_qm - fib_close_qm * dev
+fib_tp_qm_upperdeviation = fib_tp_qm + fib_tp_qm * dev
+fib_tp_qm_lowerdeviation = fib_tp_qm - fib_tp_qm * dev
+
+// cubic mean
+
+fib_high_cm_deviation_short = fib_high_cm_short + fib_high_cm_short * dev
+fib_low_cm_deviation_short = fib_low_cm_short - fib_low_cm_short * dev
+fib_close_cm_upperdeviation_short = fib_close_cm_short + fib_close_cm_short * dev
+fib_close_cm_lowerdeviation_short = fib_close_cm_short - fib_close_cm_short * dev
+fib_tp_cm_upperdeviation_short = fib_tp_cm_short + fib_tp_cm_short * dev
+fib_tp_cm_lowerdeviation_short = fib_tp_cm_short - fib_tp_cm_short * dev
+
+fib_high_cm_deviation_mid = fib_high_cm_mid + fib_high_cm_mid * dev
+fib_low_cm_deviation_mid = fib_low_cm_mid - fib_low_cm_mid * dev
+fib_close_cm_upperdeviation_mid = fib_close_cm_mid + fib_close_cm_mid * dev
+fib_close_cm_lowerdeviation_mid = fib_close_cm_mid - fib_close_cm_mid * dev
+fib_tp_cm_upperdeviation_mid = fib_tp_cm_mid + fib_tp_cm_mid * dev
+fib_tp_cm_lowerdeviation_mid = fib_tp_cm_mid - fib_tp_cm_mid * dev
+
+fib_high_cm_deviation = fib_high_cm + fib_high_cm * dev
+fib_low_cm_deviation = fib_low_cm - fib_low_cm * dev
+fib_close_cm_upperdeviation = fib_close_cm + fib_close_cm * dev
+fib_close_cm_lowerdeviation = fib_close_cm - fib_close_cm * dev
+fib_tp_cm_upperdeviation = fib_tp_cm + fib_tp_cm * dev
+fib_tp_cm_lowerdeviation = fib_tp_cm - fib_tp_cm * dev
+
+// horizontal displacement (right +, left -) per user specified number or periods
+
+displacement = input(0, title = "Periods", group = "Translate Open, High, Low, and Close Prices Plots Horizontally by a Specified Number of Periods.")
+displacement_average = input(29, title = "Periods", group = "Translate average prices Plots Horizontally by a Specified Number of Periods.")
+
+// MEAN OF MOVING AVERAGES PLOTS
+
+// arithmetic mean plot
+
+p1 = plot(highprice ? (am_calc ? (fib_lookback == "Long" ? fib_high_am : (fib_lookback == "Short" ? fib_high_am_short : fib_high_am_mid)) : na) : na, offset = displacement, color = color.rgb(131, 148, 150, 90), linewidth = 1, title = "Arithmetic mean high prices") // brblue 131, 148, 150 or brwhite 253, 246, 227 or magenta 211, 54, 130
+p2 = plot(lowprice ? (am_calc ? (fib_lookback == "Long" ? fib_low_am : (fib_lookback == "Short" ? fib_low_am_short : fib_low_am_mid)) : na) : na, offset = displacement, color = color.rgb(131, 148, 150, 90), linewidth = 1, title = "Arithmetic mean low prices") // brblue 131, 148, 150 or brwhite 253, 246, 227 or magenta 211, 54, 130
+pac = plot(closeprice ? (am_calc ? (fib_lookback == "Long" ? fib_close_am : (fib_lookback == "Short" ? fib_close_am_short : fib_close_am_mid)) : na) : na, offset = displacement, color = color.rgb(211, 54, 130, 40), linewidth = 2, title = "Arithmetic mean close prices") // brwhite 253, 246, 227 or magenta 211, 54, 130
+pao = plot(openprice ? (am_calc ? (fib_lookback == "Long" ? fib_open_am : (fib_lookback == "Short" ? fib_open_am_short : fib_open_am_mid)) : na) : na, offset = displacement, color = color.rgb(211, 54, 130, 90), linewidth = 1, title = "Arithmetic mean open prices") // brwhite 253, 246, 227 or magenta 211, 54, 130
+pat1 = plot(averageprice ? (am_calc ? (fib_lookback == "Long" ? fib_tp_am : (fib_lookback == "Short" ? fib_tp_am_short : fib_tp_am_mid)) : na) : na, offset = displacement, color = color.rgb(253, 246, 227, 60), linewidth = 1, title = "Arithmetic mean average prices") // brwhite 253, 246, 227 or magenta 211, 54, 130
+pat2 = plot(averageprice ? (am_calc ? (fib_lookback == "Long" ? fib_tp_am : (fib_lookback == "Short" ? fib_tp_am_short : fib_tp_am_mid)) : na) : na, offset = displacement_average, color = color.rgb(253, 246, 227, 40), linewidth = 1, title = "Arithmetic mean average prices") // brwhite 253, 246, 227 or magenta 211, 54, 130
+
+p3 = plot(am_calc ? (dev_yes ? (fib_lookback == "Long" ? (dev_origin == "High and Low" ? fib_high_am_deviation : (dev_origin == "Close" ? fib_close_am_upperdeviation : fib_tp_am_upperdeviation)) : (fib_lookback == "Short" ? (dev_origin == "High and Low" ? fib_high_am_deviation_short : (dev_origin == "Close" ? fib_close_am_upperdeviation_short : fib_tp_am_upperdeviation_short)) : (dev_origin == "High and Low" ? fib_high_am_deviation_mid : (dev_origin == "Close" ? fib_close_am_upperdeviation_mid : fib_tp_am_upperdeviation_mid)))) : na) : na, offset = (dev_origin == "Average" ? displacement_average : displacement), color = color.rgb(131, 148, 150, 90), linewidth=1, title = "Arithmetic mean upper deviation") // brblue 131, 148, 150 or brwhite 253, 246, 227 or magenta 211, 54, 130
+p4 = plot(am_calc ? (dev_yes ? (fib_lookback == "Long" ? (dev_origin == "High and Low" ? fib_low_am_deviation : (dev_origin == "Close" ? fib_close_am_lowerdeviation : fib_tp_am_lowerdeviation)) : (fib_lookback == "Short" ? (dev_origin == "High and Low" ? fib_low_am_deviation_short : (dev_origin == "Close" ? fib_close_am_lowerdeviation_short : fib_tp_am_lowerdeviation_short)) : (dev_origin == "High and Low" ? fib_low_am_deviation_mid : (dev_origin == "Close" ? fib_close_am_lowerdeviation_mid : fib_tp_am_lowerdeviation_mid)))) : na) : na, offset = (dev_origin == "Average" ? displacement_average : displacement), color = color.rgb(131, 148, 150, 90), linewidth=1, title = "Arithmetic mean lower deviation") // brblue 131, 148, 150 or brwhite 253, 246, 227 or magenta 211, 54, 130
+
+fill(p1, p2, title="Arithmetic mean high low plot fill", color=color.rgb(131, 148, 150, 80)) // brblue 131, 148, 150 or brwhite 253, 246, 227 or magenta 211, 54, 130
+fill(pac, pao, title="Arithmetic mean close open plot fill", color=color.rgb(211, 54, 130, 75)) // brblue 131, 148, 150 or brwhite 253, 246, 227 or magenta 211, 54, 130
+fill(p3, p4, title="Arithmetic deviation fill", color=color.rgb(131, 148, 150, 80)) // brblue 131, 148, 150 or brwhite 253, 246, 227 or magenta 211, 54, 130
+// fill(pat1, pat2, title="Arithmetic mean average deviation fill", color=color.rgb(253, 246, 227, 97)) // brblue 131, 148, 150 or brwhite 253, 246, 227
+
+// geometric mean plot
+
+p5 = plot(highprice ? (gm_calc ? (fib_lookback == "Long" ? fib_high_gm : (fib_lookback == "Short" ? fib_high_gm_short : fib_high_gm_mid)) : na) : na, offset = displacement, color = color.rgb(131, 148, 150, 90), linewidth = 1, title = "Geometric mean high prices") // brblue 131, 148, 150 or brwhite 253, 246, 227 or magenta 211, 54, 130
+p6 = plot(lowprice ? (gm_calc ? (fib_lookback == "Long" ? fib_low_gm : (fib_lookback == "Short" ? fib_low_gm_short : fib_low_gm_mid)) : na) : na, offset = displacement, color = color.rgb(131, 148, 150, 90), linewidth = 1, title = "Geometric mean low prices") // brblue 131, 148, 150 or brwhite 253, 246, 227 or magenta 211, 54, 130
+pgc = plot(closeprice ? (gm_calc ? (fib_lookback == "Long" ? fib_close_gm : (fib_lookback == "Short" ? fib_close_gm_short : fib_close_gm_mid)) : na) : na, offset = displacement, color = color.rgb(211, 54, 130, 40), linewidth = 2, title = "Geometric mean close prices") // brwhite 253, 246, 227 or magenta 211, 54, 130
+pgo = plot(openprice ? (gm_calc ? (fib_lookback == "Long" ? fib_open_gm : (fib_lookback == "Short" ? fib_open_gm_short : fib_open_gm_mid)) : na) : na, offset = displacement, color = color.rgb(211, 54, 130, 90), linewidth = 1, title = "Geometric mean open prices") // brwhite 253, 246, 227 or magenta 211, 54, 130
+pgt1 = plot(averageprice ? (gm_calc ? (fib_lookback == "Long" ? fib_tp_gm : (fib_lookback == "Short" ? fib_tp_gm_short : fib_tp_gm_mid)) : na) : na, offset = displacement, color = color.rgb(253, 246, 227, 60), linewidth = 1, title = "Geometric mean average prices") // brwhite 253, 246, 227 or magenta 211, 54, 130
+pgt2 = plot(averageprice ? (gm_calc ? (fib_lookback == "Long" ? fib_tp_gm : (fib_lookback == "Short" ? fib_tp_gm_short : fib_tp_gm_mid)) : na) : na, offset = displacement_average, color = color.rgb(253, 246, 227, 40), linewidth = 1, title = "Geometric mean average prices") // brwhite 253, 246, 227 or magenta 211, 54, 130
+
+p7 = plot(gm_calc ? (dev_yes ? (fib_lookback == "Long" ? (dev_origin == "High and Low" ? fib_high_gm_deviation : (dev_origin == "Close" ? fib_close_gm_upperdeviation : fib_tp_gm_upperdeviation)) : (fib_lookback == "Short" ? (dev_origin == "High and Low" ? fib_high_gm_deviation_short : (dev_origin == "Close" ? fib_close_gm_upperdeviation_short : fib_tp_gm_upperdeviation_short)) : (dev_origin == "High and Low" ? fib_high_gm_deviation_mid : (dev_origin == "Close" ? fib_close_gm_upperdeviation_mid : fib_tp_gm_upperdeviation_mid)))) : na) : na, offset = (dev_origin == "Average" ? displacement_average : displacement), color = color.rgb(131, 148, 150, 90), linewidth=1, title = "Geometric mean upper deviation") // brblue 131, 148, 150 or brwhite 253, 246, 227 or magenta 211, 54, 130
+p8 = plot(gm_calc ? (dev_yes ? (fib_lookback == "Long" ? (dev_origin == "High and Low" ? fib_low_gm_deviation : (dev_origin == "Close" ? fib_close_gm_lowerdeviation : fib_tp_gm_lowerdeviation)) : (fib_lookback == "Short" ? (dev_origin == "High and Low" ? fib_low_gm_deviation_short : (dev_origin == "Close" ? fib_close_gm_lowerdeviation_short : fib_tp_gm_lowerdeviation_short)) : (dev_origin == "High and Low" ? fib_low_gm_deviation_mid : (dev_origin == "Close" ? fib_close_gm_lowerdeviation_mid : fib_tp_gm_lowerdeviation_mid)))) : na) : na, offset = (dev_origin == "Average" ? displacement_average : displacement), color = color.rgb(131, 148, 150, 90), linewidth=1, title = "Geometric mean lower deviation") // brblue 131, 148, 150 or brwhite 253, 246, 227 or magenta 211, 54, 130
+
+fill(p5, p6, title="Geometric mean high low plot fill", color=color.rgb(131, 148, 150, 80)) // brblue 131, 148, 150 or brwhite 253, 246, 227 or magenta 211, 54, 130
+fill(pgc, pgo, title="Geometric mean close open plot fill", color=color.rgb(211, 54, 130, 75)) // brblue 131, 148, 150 or brwhite 253, 246, 227 or magenta 211, 54, 130
+fill(p7, p8, title="Geometric mean deviation fill", color=color.rgb(131, 148, 150, 80)) // brblue 131, 148, 150 or brwhite 253, 246, 227 or magenta 211, 54, 130
+// fill(pgt1, pgt2, title="Geometric mean average deviation fill", color=color.rgb(253, 246, 227, 97)) // brblue 131, 148, 150 or brwhite 253, 246, 227
+
+// harmonic mean plot
+
+p9 = plot(highprice ? (hm_calc ? (fib_lookback == "Long" ? fib_high_hm : (fib_lookback == "Short" ? fib_high_hm_short : fib_high_hm_mid)) : na) : na, offset = displacement, color = color.rgb(131, 148, 150, 90), linewidth = 1, title = "Harmonic mean high prices") // brblue 131, 148, 150 or brwhite 253, 246, 227 or magenta 211, 54, 130
+p10 = plot(lowprice ? (hm_calc ? (fib_lookback == "Long" ? fib_low_hm : (fib_lookback == "Short" ? fib_low_hm_short : fib_low_hm_mid)) : na) : na, offset = displacement, color = color.rgb(131, 148, 150, 90), linewidth = 1, title = "Harmonic mean low prices") // brblue 131, 148, 150 or brwhite 253, 246, 227 or magenta 211, 54, 130
+phc = plot(closeprice ? (hm_calc ? (fib_lookback == "Long" ? fib_close_hm : (fib_lookback == "Short" ? fib_close_hm_short : fib_close_hm_mid)) : na) : na, offset = displacement, color = color.rgb(211, 54, 130, 40), linewidth = 2, title = "Harmonic mean close prices") // brwhite 253, 246, 227 or magenta 211, 54, 130
+pho = plot(openprice ? (hm_calc ? (fib_lookback == "Long" ? fib_open_hm : (fib_lookback == "Short" ? fib_open_hm_short : fib_open_hm_mid)) : na) : na, offset = displacement, color = color.rgb(211, 54, 130, 90), linewidth = 1, title = "Harmonic mean open prices") // brwhite 253, 246, 227 or magenta 211, 54, 130
+pht1 = plot(averageprice ? (hm_calc ? (fib_lookback == "Long" ? fib_tp_hm : (fib_lookback == "Short" ? fib_tp_hm_short : fib_tp_hm_mid)) : na) : na, offset = displacement, color = color.rgb(253, 246, 227, 60), linewidth = 1, title = "Harmonic mean average prices") // brwhite 253, 246, 227 or magenta 211, 54, 130
+pht2 = plot(averageprice ? (hm_calc ? (fib_lookback == "Long" ? fib_tp_hm : (fib_lookback == "Short" ? fib_tp_hm_short : fib_tp_hm_mid)) : na) : na, offset = displacement_average, color = color.rgb(253, 246, 227, 40), linewidth = 1, title = "Harmonic mean average prices") // brwhite 253, 246, 227 or magenta 211, 54, 130
+
+p11 = plot(hm_calc ? (dev_yes ? (fib_lookback == "Long" ? (dev_origin == "High and Low" ? fib_high_hm_deviation : (dev_origin == "Close" ? fib_close_hm_upperdeviation : fib_tp_hm_upperdeviation)) : (fib_lookback == "Short" ? (dev_origin == "High and Low" ? fib_high_hm_deviation_short : (dev_origin == "Close" ? fib_close_hm_upperdeviation_short : fib_tp_hm_upperdeviation_short)) : (dev_origin == "High and Low" ? fib_high_hm_deviation_mid : (dev_origin == "Close" ? fib_close_hm_upperdeviation_mid : fib_tp_hm_upperdeviation_mid)))) : na) : na, offset = (dev_origin == "Average" ? displacement_average : displacement), color = color.rgb(131, 148, 150, 90), linewidth=1, title = "Harmonic mean upper deviation") // brblue 131, 148, 150 or brwhite 253, 246, 227 or magenta 211, 54, 130
+p12 = plot(hm_calc ? (dev_yes ? (fib_lookback == "Long" ? (dev_origin == "High and Low" ? fib_low_hm_deviation : (dev_origin == "Close" ? fib_close_hm_lowerdeviation : fib_tp_hm_lowerdeviation)) : (fib_lookback == "Short" ? (dev_origin == "High and Low" ? fib_low_hm_deviation_short : (dev_origin == "Close" ? fib_close_hm_lowerdeviation_short : fib_tp_hm_lowerdeviation_short)) : (dev_origin == "High and Low" ? fib_low_hm_deviation_mid : (dev_origin == "Close" ? fib_close_hm_lowerdeviation_mid : fib_tp_hm_lowerdeviation_mid)))) : na) : na, offset = (dev_origin == "Average" ? displacement_average : displacement), color = color.rgb(131, 148, 150, 90), linewidth=1, title = "Harmonic mean lower deviation") // brblue 131, 148, 150 or brwhite 253, 246, 227 or magenta 211, 54, 130
+
+fill(p9, p10, title="Harmonic mean high low plot fill", color=color.rgb(131, 148, 150, 80)) // brblue 131, 148, 150 or brwhite 253, 246, 227 or magenta 211, 54, 130
+fill(phc, pho, title="Harmonic mean close open plot fill", color=color.rgb(211, 54, 130, 75))// brblue 131, 148, 150 or brwhite 253, 246, 227 or magenta 211, 54, 130
+fill(p11, p12, title="Harmonic mean deviation fill", color=color.rgb(131, 148, 150, 80)) // brblue 131, 148, 150 or brwhite 253, 246, 227 or magenta 211, 54, 130
+// fill(pht1, pht2, title="Harmonic mean average deviation fill", color=color.rgb(253, 246, 227, 97)) // brblue 131, 148, 150 or brwhite 253, 246, 227
+
+// quadratic mean plot
+
+p13 = plot(highprice ? (qm_calc ? (fib_lookback == "Long" ? fib_high_qm : (fib_lookback == "Short" ? fib_high_qm_short : fib_high_qm_mid)) : na) : na, offset = displacement, color = color.rgb(131, 148, 150, 90), linewidth = 1, title = "Quadratic mean high prices") // brblue 131, 148, 150 or brwhite 253, 246, 227 or magenta 211, 54, 130
+p14 = plot(lowprice ? (qm_calc ? (fib_lookback == "Long" ? fib_low_qm : (fib_lookback == "Short" ? fib_low_qm_short : fib_low_qm_mid)) : na) : na, offset = displacement, color = color.rgb(131, 148, 150, 90), linewidth = 1, title = "Quadratic mean low prices") // brblue 131, 148, 150 or brwhite 253, 246, 227 or magenta 211, 54, 130
+pqc = plot(closeprice ? (qm_calc ? (fib_lookback == "Long" ? fib_close_qm : (fib_lookback == "Short" ? fib_close_qm_short : fib_close_qm_mid)) : na) : na, offset = displacement, color = color.rgb(211, 54, 130, 40), linewidth = 2, title = "Quadratic mean close prices") // brwhite 253, 246, 227 or magenta 211, 54, 130
+pqo = plot(openprice ? (qm_calc ? (fib_lookback == "Long" ? fib_open_qm : (fib_lookback == "Short" ? fib_open_qm_short : fib_open_qm_mid)) : na) : na, offset = displacement, color = color.rgb(211, 54, 130, 90), linewidth = 1, title = "Quadratic mean open prices") // brwhite 253, 246, 227 or magenta 211, 54, 130
+pqt1 = plot(averageprice ? (qm_calc ? (fib_lookback == "Long" ? fib_tp_qm : (fib_lookback == "Short" ? fib_tp_qm_short : fib_tp_qm_mid)) : na) : na, offset = displacement, color = color.rgb(253, 246, 227, 60), linewidth = 1, title = "Quadratic mean average prices") // brwhite 253, 246, 227 or magenta 211, 54, 130
+pqt2 = plot(averageprice ? (qm_calc ? (fib_lookback == "Long" ? fib_tp_qm : (fib_lookback == "Short" ? fib_tp_qm_short : fib_tp_qm_mid)) : na) : na, offset = displacement_average, color = color.rgb(253, 246, 227, 40), linewidth = 1, title = "Quadratic mean average prices") // brwhite 253, 246, 227 or magenta 211, 54, 130
+
+p15 = plot(qm_calc ? (dev_yes ? (fib_lookback == "Long" ? (dev_origin == "High and Low" ? fib_high_qm_deviation : (dev_origin == "Close" ? fib_close_qm_upperdeviation : fib_tp_qm_upperdeviation)) : (fib_lookback == "Short" ? (dev_origin == "High and Low" ? fib_high_qm_deviation_short : (dev_origin == "Close" ? fib_close_qm_upperdeviation_short : fib_tp_qm_upperdeviation_short)) : (dev_origin == "High and Low" ? fib_high_qm_deviation_mid : (dev_origin == "Close" ? fib_close_qm_upperdeviation_mid : fib_tp_qm_upperdeviation_mid)))) : na) : na, offset = (dev_origin == "Average" ? displacement_average : displacement), color = color.rgb(131, 148, 150, 90), linewidth=1, title = "Quadratic mean upper deviation") // brblue 131, 148, 150 or brwhite 253, 246, 227 or magenta 211, 54, 130
+p16 = plot(qm_calc ? (dev_yes ? (fib_lookback == "Long" ? (dev_origin == "High and Low" ? fib_low_qm_deviation : (dev_origin == "Close" ? fib_close_qm_lowerdeviation : fib_tp_qm_lowerdeviation)) : (fib_lookback == "Short" ? (dev_origin == "High and Low" ? fib_low_qm_deviation_short : (dev_origin == "Close" ? fib_close_qm_lowerdeviation_short : fib_tp_qm_lowerdeviation_short)) : (dev_origin == "High and Low" ? fib_low_qm_deviation_mid : (dev_origin == "Close" ? fib_close_qm_lowerdeviation_mid : fib_tp_qm_lowerdeviation_mid)))) : na) : na, offset = (dev_origin == "Average" ? displacement_average : displacement), color = color.rgb(131, 148, 150, 90), linewidth=1, title = "Quadratic mean lower deviation") // brblue 131, 148, 150 or brwhite 253, 246, 227 or magenta 211, 54, 130
+
+fill(p13, p14, title="Quadratic mean high low plot fill", color=color.rgb(131, 148, 150, 80)) // brblue 131, 148, 150 or brwhite 253, 246, 227 or magenta 211, 54, 130
+fill(pqc, pqo, title="Quadratic mean close open plot fill", color=color.rgb(211, 54, 130, 75)) // brblue 131, 148, 150 or brwhite 253, 246, 227 or magenta 211, 54, 130
+fill(p15, p16, title="Quadratic mean deviation fill", color=color.rgb(131, 148, 150, 80)) // brblue 131, 148, 150 or brwhite 253, 246, 227 or magenta 211, 54, 130
+// fill(pqt1, pqt2, title="Quadratic mean average deviation fill", color=color.rgb(253, 246, 227, 97)) // brblue 131, 148, 150 or brwhite 253, 246, 227
+
+// cubic mean plot
+
+p17 = plot(highprice ? (cm_calc ? (fib_lookback == "Long" ? fib_high_cm : (fib_lookback == "Short" ? fib_high_cm_short : fib_high_cm_mid)) : na) : na, offset = displacement, color = color.rgb(131, 148, 150, 90), linewidth = 1, title = "Cubic mean high prices") // brblue 131, 148, 150 or brwhite 253, 246, 227 or magenta 211, 54, 130
+p18 = plot(lowprice ? (cm_calc ? (fib_lookback == "Long" ? fib_low_cm : (fib_lookback == "Short" ? fib_low_cm_short : fib_low_cm_mid)) : na) : na, offset = displacement, color = color.rgb(131, 148, 150, 90), linewidth = 1, title = "Cubic mean low prices")// brblue 131, 148, 150 or brwhite 253, 246, 227 or magenta 211, 54, 130
+pcc = plot(closeprice ? (cm_calc ? (fib_lookback == "Long" ? fib_close_cm : (fib_lookback == "Short" ? fib_close_cm_short : fib_close_cm_mid)) : na) : na, offset = displacement, color = color.rgb(211, 54, 130, 40), linewidth = 2, title = "Cubic mean close prices") // brwhite 253, 246, 227 or magenta 211, 54, 130
+pco = plot(openprice ? (cm_calc ? (fib_lookback == "Long" ? fib_open_cm : (fib_lookback == "Short" ? fib_open_cm_short : fib_open_cm_mid)) : na) : na, offset = displacement, color = color.rgb(211, 54, 130, 90), linewidth = 1, title = "Cubic mean open prices") // brwhite 253, 246, 227 or magenta 211, 54, 130
+pct1 = plot(averageprice ? (cm_calc ? (fib_lookback == "Long" ? fib_tp_cm : (fib_lookback == "Short" ? fib_tp_cm_short : fib_tp_cm_mid)) : na) : na, offset = displacement, color = color.rgb(253, 246, 227, 60), linewidth = 1, title = "Cubic mean average prices") // brwhite 253, 246, 227 or magenta 211, 54, 130
+pct2 = plot(averageprice ? (cm_calc ? (fib_lookback == "Long" ? fib_tp_cm : (fib_lookback == "Short" ? fib_tp_cm_short : fib_tp_cm_mid)) : na) : na, offset = displacement_average, color = color.rgb(253, 246, 227, 40), linewidth = 1, title = "Cubic mean average prices") // brwhite 253, 246, 227 or magenta 211, 54, 130
+
+p19 = plot(cm_calc ? (dev_yes ? (fib_lookback == "Long" ? (dev_origin == "High and Low" ? fib_high_cm_deviation : (dev_origin == "Close" ? fib_close_cm_upperdeviation : fib_tp_cm_upperdeviation)) : (fib_lookback == "Short" ? (dev_origin == "High and Low" ? fib_high_cm_deviation_short : (dev_origin == "Close" ? fib_close_cm_upperdeviation_short : fib_tp_cm_upperdeviation_short)) : (dev_origin == "High and Low" ? fib_high_cm_deviation_mid : (dev_origin == "Close" ? fib_close_cm_upperdeviation_mid : fib_tp_cm_upperdeviation_mid)))) : na) : na, offset = displacement, color = color.rgb(131, 148, 150, 90), linewidth=1, title = "Cubic mean upper deviation") // brblue 131, 148, 150 or brwhite 253, 246, 227 or magenta 211, 54, 130
+p20 = plot(cm_calc ? (dev_yes ? (fib_lookback == "Long" ? (dev_origin == "High and Low" ? fib_low_cm_deviation : (dev_origin == "Close" ? fib_close_cm_lowerdeviation : fib_tp_cm_lowerdeviation)) : (fib_lookback == "Short" ? (dev_origin == "High and Low" ? fib_low_cm_deviation_short : (dev_origin == "Close" ? fib_close_cm_lowerdeviation_short : fib_tp_cm_lowerdeviation_short)) : (dev_origin == "High and Low" ? fib_low_cm_deviation_mid : (dev_origin == "Close" ? fib_close_cm_lowerdeviation_mid : fib_tp_cm_lowerdeviation_mid)))) : na) : na, offset = displacement, color = color.rgb(131, 148, 150, 90), linewidth=1, title = "Cubic mean lower deviation") // brblue 131, 148, 150 or brwhite 253, 246, 227 or magenta 211, 54, 130
+
+fill(p17, p18, title="Cubic mean high low plot fill", color=color.rgb(131, 148, 150, 80)) // brblue 131, 148, 150 or brwhite 253, 246, 227 or magenta 211, 54, 130
+fill(pcc, pco, title="Cubic mean close open plot fill", color=color.rgb(211, 54, 130, 75)) // brblue 131, 148, 150 or brwhite 253, 246, 227 or magenta 211, 54, 130
+fill(p19, p20, title="Cubic mean deviation fill", color=color.rgb(131, 148, 150, 80)) // brblue 131, 148, 150 or brwhite 253, 246, 227 or magenta 211, 54, 130
+// fill(pct1, pct2, title="Cubic mean average deviation fill", color=color.rgb(253, 246, 227, 97)) // brblue 131, 148, 150 or brwhite 253, 246, 227
+
+// MOVING AVERAGES PLOTS
+
+show_movingaverages = input(false, "Display all moving averages?", inline="Moving Averages", group = "Display moving averages applied in mean calculations. Source price of those displayed is the average price defined by the selected average price calculation (above).")
+
+displacement_ma_average = input(29, title = "Periods", group = "Translate all Moving Average Plots Horizontally by a Specified Number of Periods.")
+
+typical_ma_1 = plot(show_movingaverages ? (tfib_ma_1 > 0.0 ? tfib_ma_1 : na) : na, offset = displacement_ma_average, color = tfib_ma_1 < tfib_ma_2 ? (tfib_ma_5 < tfib_ma_6 ? color.rgb(253, 246, 227, 73) : color.rgb(253, 246, 227, 85)) : (tfib_ma_6 > tfib_ma_8 ? color.rgb(253, 246, 227, 73) : color.rgb(253, 246, 227, 85)), linewidth = 1, title = "ma 1") // brblue 131, 148, 150
+typical_ma_2 = plot(show_movingaverages ? (tfib_ma_2 > 0.0 ? tfib_ma_2 : na) : na, offset = displacement_ma_average, color = tfib_ma_2 < tfib_ma_3 ? (tfib_ma_4 < tfib_ma_6 ? color.rgb(253, 246, 227, 76) : color.rgb(253, 246, 227, 85)) : (tfib_ma_5 > tfib_ma_8 ? color.rgb(253, 246, 227, 76) : color.rgb(253, 246, 227, 85)), linewidth = 1, title = "ma 2")
+typical_ma_3 = plot(show_movingaverages ? (tfib_ma_3 > 0.0 ? tfib_ma_3 : na) : na, offset = displacement_ma_average, color = tfib_ma_3 < tfib_ma_4 ? (tfib_ma_3 < tfib_ma_6 ? color.rgb(253, 246, 227, 79) : color.rgb(253, 246, 227, 85)) : (tfib_ma_4 > tfib_ma_8 ? color.rgb(253, 246, 227, 79) : color.rgb(253, 246, 227, 85)), linewidth = 1, title = "ma 3")
+typical_ma_4 = plot(show_movingaverages ? (tfib_ma_4 > 0.0 ? tfib_ma_4 : na) : na, offset = displacement_ma_average, color = tfib_ma_4 < tfib_ma_5 ? (tfib_ma_2 < tfib_ma_6 ? color.rgb(253, 246, 227, 82) : color.rgb(253, 246, 227, 85)) : (tfib_ma_3 > tfib_ma_8 ? color.rgb(253, 246, 227, 82) : color.rgb(253, 246, 227, 85)), linewidth = 1, title = "ma 4")
+typical_ma_5 = plot(show_movingaverages ? (tfib_ma_5 > 0.0 ? tfib_ma_5 : na) : na, offset = displacement_ma_average, color = tfib_ma_5 < tfib_ma_6 ? (tfib_ma_1 < tfib_ma_6 ? color.rgb(253, 246, 227, 85) : color.rgb(253, 246, 227, 85)) : (tfib_ma_2 > tfib_ma_8 ? color.rgb(253, 246, 227, 85) : color.rgb(253, 246, 227, 85)), linewidth = 1, title = "ma 5")
+
+typical_ma_6 = plot(show_movingaverages ? (tfib_ma_6 > 0.0 ? tfib_ma_6 : na) : na, offset = displacement_ma_average, color = tfib_ma_6 < tfib_ma_7 ? color.rgb(253, 246, 227, 85) : color.rgb(131, 148, 150, 85), linewidth = 1, title = "ma 6")
+typical_ma_7 = plot(show_movingaverages ? (tfib_ma_7 > 0.0 ? tfib_ma_7 : na) : na, offset = displacement_ma_average, color = tfib_ma_7 < tfib_ma_8 ? color.rgb(253, 246, 227, 85) : color.rgb(131, 148, 150, 85), linewidth = 1, title = "ma 7")
+typical_ma_8 = plot(show_movingaverages ? (tfib_ma_8 > 0.0 ? tfib_ma_8 : na) : na, offset = displacement_ma_average, color = tfib_ma_8 < tfib_ma_9 ? color.rgb(253, 246, 227, 85) : color.rgb(131, 148, 150, 85), linewidth = 1, title = "ma 8")
+typical_ma_9 = plot(show_movingaverages ? (tfib_ma_9 > 0.0 ? tfib_ma_9 : na) : na, offset = displacement_ma_average, color = tfib_ma_9 < tfib_ma_10 ? color.rgb(253, 246, 227, 85) : color.rgb(131, 148, 150, 85), linewidth = 1, title = "ma 9")
+
+typical_ma_10 = plot(show_movingaverages ? (tfib_ma_10 > 0.0 ? tfib_ma_10 : na) : na, offset = displacement_ma_average, color = color.rgb(131, 148, 150, 85), linewidth = 1, title = "ma 10")
+typical_ma_11 = plot(show_movingaverages ? (tfib_ma_11 > 0.0 ? tfib_ma_11 : na) : na, offset = displacement_ma_average, color = color.rgb(131, 148, 150, 85), linewidth = 1, title = "ma 11")
+typical_ma_12 = plot(show_movingaverages ? (tfib_ma_12 > 0.0 ? tfib_ma_12 : na) : na, offset = displacement_ma_average, color = color.rgb(131, 148, 150, 85), linewidth = 1, title = "ma 12")
+typical_ma_13 = plot(show_movingaverages ? (tfib_ma_13 > 0.0 ? tfib_ma_13 : na) : na, offset = displacement_ma_average, color = color.rgb(131, 148, 150, 88), linewidth = 1, title = "ma 13")
+typical_ma_14 = plot(show_movingaverages ? (tfib_ma_14 > 0.0 ? tfib_ma_14 : na) : na, offset = displacement_ma_average, color = color.rgb(131, 148, 150, 88), linewidth = 1, title = "ma 14")
+typical_ma_15 = plot(show_movingaverages ? (tfib_ma_15 > 0.0 ? tfib_ma_15 : na) : na, offset = displacement_ma_average, color = color.rgb(131, 148, 150, 88), linewidth = 1, title = "ma 15")
+
+
+// NOTES
+//
+// COLOR SCHEME
+//
+// SOLARIZED by Ethan Schoonover at ethanschoonover.com
+// NAME       HEX      RGB
+// brblack    #002b36  0, 43, 54
+// black      #073642  7, 54, 66
+// brgreen    #586e75  88, 110, 117
+// bryellow   #657b83  101, 123, 131
+// brblue     #839496  131, 148, 150
+// brcyan     #93a1a1  147, 161, 161
+// white      #eee8d5  238, 232, 213
+// brwhite    #fdf6e3  253, 246, 227
+// yellow     #b58900  181, 137, 0
+// brred      #cb4b16  203, 75, 22
+// red        #dc322f  220, 50, 47
+// magenta    #d33682  211, 54, 130
+// brmagenta  #6c71c4  108, 113, 196
+// blue       #268bd2  38, 139, 210
+// cyan       #2aa198  42, 161, 152
+// green      #859900  133, 153, 0
+
+// IDEAS
+//
+// INTERESTING NUMBERS SEQUENCES
+//
+// Fibonacci numbers sequence (OEIS A000045): 0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610, 987, 1597, 2584, 4181...
+// The ratio between two consecutive Fibonacci numbers converges to (1+√5)/2, the golden ratio. The golden ratio is related to the pentagon.
+// Leonardo numbers sequence (OEIS A001595): 1, 1, 3, 5, 9, 15, 25, 41, 67, 109, 177, 287, 465, 753, 1219, 1973, 3193, 5167...
+//
+// Lucas numbers sequence (OEIS A000032, A000204): 2, 1, 3, 4, 7, 11, 18, 29, 47, 76, 123, 199, 322, 521, 843, 1364, 2207, 3571, 5778...
+// The ratio between two consecutive Lucas numbers converges to (1+√5)/2, the golden ratio.
+// Prime Lucas numbers' positions within the sequence up to L(1000): 2, 4, 5, 7, 8, 11, 13, 16, 17, 19, 31, 37, 41, 47, 53, 61, 71, 79, 113, 313, 353, 503, 613, 617, 863.
+// Pell numbers sequence (OEIS A000129): 0, 1, 2, 5, 12, 29, 70, 169, 408, 985, 2378, 5741...
+// The ratio between two consecutive Pell numbers converges to 1 + 2^(1/2), the silver ratio. Silver ratio is related to the regular octagon.
+// Pell–Lucas numbers sequence (a.k.a., Companion Pell numbers, OEIS A002203): 2, 2, 6, 14, 34, 82, 198, 478, 1154, 2786, 6726...
+// Padovan numbers (OEIS A000931): 1, 0, 0, 1, 0, 1, 1, 1, 2, 2, 3, 4, 5, 7, 9, 12, 16, 21, 28, 37, 49, 65, 86, 114, 151, 200, 265, 351, 465, 616, 816, 1081, 1432, 1897, 2513, 3329, 4410, 5842...
+// Equilateral triangles with side lengths following the Padovan sequence produce a spiral.
+// Perrin numbers sequence (a.k.a., Ondrej Such numbers, OEIS A001608): 3, 0, 2, 3, 2, 5, 5, 7, 10, 12, 17, 22, 29, 39, 51, 68, 90, 119, 158, 209, 277, 367, 486, 644, 853, 1130, 1497, 1983, 2627, 3480, 4610...
+// Equilateral triangles with side lengths following the Perrin sequence produce a spiral.
+// Jacobsthal numbers sequence (OEIS A001045): 0, 1, 1, 3, 5, 11, 21, 43, 85, 171, 341, 683, 1365, 2731, 5461...
+//
+// Catalan numbers sequence (OEIS A000108): 1, 1, 2, 5, 14, 42, 132, 429, 1430, 4862...
+// Riordan numbers sequence (OEIS A005043): 1, 0, 1, 1, 3, 6, 15, 36, 91, 232, 603, 1585, 4213...
+// Motzkin numbers sequence (OEIS A001006): 1, 1, 2, 4, 9, 21, 51, 127, 323, 835, 2188, 5798...
+// Narayana's cows numbers sequence (OEIS A000930): 1, 1, 1, 2, 3, 4, 6, 9, 13, 19, 28, 41, 60, 88, 129, 189, 277, 406, 595, 872, 1278, 1873, 2745, 4023...
+//
+// Tetrahedral (triangular pyramidal) numbers sequence (OEIS A000292): 0, 1, 4, 10, 20, 35, 56, 84, 120, 165, 220, 286, 364, 455, 560, 680, 816, 969, 1140, 1330, 1540, 1771, 2024, 2300, 2600, 2925, 3276, 3654, 4060...
+// Magic constants (OEIS A006003): 0, 1, 5, 15, 34, 65, 111, 175, 260, 369, 505, 671, 870, 1105, 1379, 1695, 2056, 2465, 2925, 3439, 4010, 4641...
+// 
+// Mersenne primes exponents (OEIS A000043): 2, 3, 5, 7, 13, 17, 19, 31, 61, 89, 107, 127, 521, 607, 1279, 2203, 2281, 3217, 4253, 4423...
+//
+// FASCINATING NUMBERS († denotes a mathematical constant)
+//
+// Inverse square root of 5 = 5^(-1/2) = 0.447213596
+// Inverse square root of 3 = 3^(-1/2) = 0.577350269
+// Golden ratio conjugate, a.k.a., Silver ratio 𝚽 = |(1-√5)/2| = 0.618033989 †
+// Inverse square root of 2 = 2^(-1/2) = 2^(1/2)/2 = sin 45˚ = cos 45˚ = 0.707106781
+// Delian constant = cube root of 2 = 2^(1/3) = 1.2599210499 †
+// Plastic constant = ((9+69^(1/2))/18)^(1/3)+((9-69^(1/2))/18)^(1/3) = 1.324717957 †
+// Pythagoras's constant = square root of 2 = 2^(1/2) = 1.414213562 †
+// Cube root of 3 = 3^(1/3) = 1.4422495703 †
+// Supergolden ratio ψ = (1+((29+3*93^(1/2))/2)^(1/3)+((29-3*93^(1/2))/2)^(1/3))/3 = 1.465571232 †
+// Golden ratio φ (1st metallic ratio) = (1+√5)/2 = 1.618033989 †
+// Theodorus' constant = square root of 3 = 3^(1/2) = 1.732050808 †
+// Square root of 5 = 5^(1/2) = 2.236067978 †
+// Universal parabolic constant = ln(1+2^(1/2))+2^(1/2) = 2.295587149 †
+// Silver ratio (2nd metallic ratio) = 1 + 2^(1/2) = 2.414213562 †
+// Euler's number = ∑(1/n!) = 2.718281828 †
+// Square root of 2 cubed = 2^(3/2) = 8^(1/2) = 2*2^(1/2) = 2.8284271247
+// Pi = 3.141592654 †
+// Milu = 355/113 = 3.14159292
+// Yuelu = 22/7 = 3.14285714
+// 2 time the Square root of 3 = 2*3^(1/2) = 3.464101615
+// 3 times the Square root of 2 = 3*2^(1/2) = 4.242640687
+// Square root of 3 cubed = 3^(3/2) = 27^(1/2) = 3*3^(1/2)= 5.196152423
+//
+// END
+
